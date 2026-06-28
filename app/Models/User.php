@@ -17,9 +17,9 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'phone',      // NUEVO
-        'bio',        // NUEVO
-        'avatar',     // NUEVO
+        'phone',
+        'bio',
+        'avatar',
     ];
 
     /**
@@ -37,4 +37,12 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    /**
+     * Citas del usuario
+     */
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class);
+    }
 }

@@ -193,6 +193,13 @@
                     <p>Ver y agendar citas</p>
                 </div>
             </a>
+            <a href="{{ route('patients.index') }}" style="text-decoration: none;">
+                <div class="card">
+                    <div class="card-icon">👥</div>
+                    <h3>Pacientes</h3>
+                    <p>Gestionar expedientes de pacientes</p>
+                </div>
+            </a>
         </div>
     </div>
 </body>

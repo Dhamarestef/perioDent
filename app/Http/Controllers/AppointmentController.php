@@ -40,7 +40,7 @@ class AppointmentController extends Controller
     {
         $request->validate([
             'service_id' => 'required|exists:services,id',
-            'appointment_date' => 'required|date_format:Y-m-d H:i|after:now',
+            'appointment_date' => 'required|date_format:Y-m-d\TH:i|after:now',
             'notes' => 'nullable|string|max:500',
         ], [
             'service_id.required' => 'Debes seleccionar un servicio',
@@ -50,7 +50,7 @@ class AppointmentController extends Controller
         ]);
 
         // Verificar disponibilidad
-        $appointmentDate = Carbon::createFromFormat('Y-m-d H:i', $request->appointment_date);
+        $appointmentDate = Carbon::createFromFormat('Y-m-d\TH:i', $request->appointment_date);
 
         if (!$this->isTimeAvailable($appointmentDate, $request->service_id)) {
             return back()->withErrors(['appointment_date' => 'Este horario no está disponible']);
@@ -131,11 +131,11 @@ class AppointmentController extends Controller
 
         $request->validate([
             'service_id' => 'required|exists:services,id',
-            'appointment_date' => 'required|date_format:Y-m-d H:i|after:now',
+            'appointment_date' => 'required|date_format:Y-m-d\TH:i|after:now',
             'notes' => 'nullable|string|max:500',
         ]);
 
-        $appointmentDate = Carbon::createFromFormat('Y-m-d H:i', $request->appointment_date);
+        $appointmentDate = Carbon::createFromFormat('Y-m-d\TH:i', $request->appointment_date);
 
         if (!$this->isTimeAvailable($appointmentDate, $request->service_id, $id)) {
             return back()->withErrors(['appointment_date' => 'Este horario no está disponible']);
