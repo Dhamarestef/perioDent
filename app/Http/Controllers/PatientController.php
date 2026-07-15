@@ -71,7 +71,8 @@ class PatientController extends Controller
 
     public function show($id)
     {
-        $patient = Patient::findOrFail($id);
+        $patient = Patient::with(['appointments.service'])
+                          ->findOrFail($id);
         return view('patients.show', compact('patient'));
     }
 
@@ -119,10 +120,67 @@ class PatientController extends Controller
 
     public function destroy($id)
     {
-        $patient = Patient::findOrFail($id);
-        $patient->delete();
+        Patient::findOrFail($id)->delete();
 
         return redirect()->route('patients.index')
                          ->with('success', 'Paciente eliminado correctamente');
+    }
+
+    // ── Buscador AJAX ──
+    public function search(Request $request)
+    {
+        $query = $request->get('q', '');
+
+        if (strlen($query) < 2) {
+            return response()->json([]);
+        }
+
+        $patients = Patient::where('nombre', 'LIKE', "%{$query}%")
+                           ->orWhere('numero_expediente', 'LIKE', "%{$query}%")
+                           ->orWhere('telefono', 'LIKE', "%{$query}%")
+                           ->orderBy('nombre')
+                           ->limit(8)
+                           ->get(['id', 'nombre', 'numero_expediente', 'telefono', 'correo',
+                                  'domicilio_actual', 'lugar_nacimiento', 'edad']);
+
+        return response()->json($patients);
+    }
+
+    // ── Registro rápido desde formulario de citas ──
+    public function quickStore(Request $request)
+    {
+        $request->validate([
+            'nombre'   => 'required|string|max:255',
+            'telefono' => 'nullable|string|max:20',
+            'correo'   => 'nullable|email|max:255',
+        ], [
+            'nombre.required' => 'El nombre del paciente es requerido',
+            'correo.email'    => 'Ingresa un correo válido',
+        ]);
+
+        $patient = Patient::create([
+            'numero_expediente' => Patient::generarNumeroExpediente(),
+            'fecha_registro'    => now()->toDateString(),
+            'nombre'            => $request->nombre,
+            'telefono'          => $request->telefono,
+            'correo'            => $request->correo,
+            'edad'              => 0,
+            'sexo'              => 'F',
+            'escolaridad'       => 'Otro',
+            'estado_civil'      => 'Otro',
+            'lugar_nacimiento'  => 'Por completar',
+            'fecha_nacimiento'  => now()->toDateString(),
+            'domicilio_actual'  => 'Por completar',
+            'lugar_residencia'  => 'Por completar',
+        ]);
+
+        return response()->json([
+            'id'                => $patient->id,
+            'nombre'            => $patient->nombre,
+            'numero_expediente' => $patient->numero_expediente,
+            'telefono'          => $patient->telefono,
+            'correo'            => $patient->correo,
+            'incompleto'        => true,
+        ]);
     }
 }

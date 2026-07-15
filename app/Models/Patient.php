@@ -27,13 +27,22 @@ class Patient extends Model
         'fecha_nacimiento' => 'date',
     ];
 
-    /**
-     * Genera el siguiente número de expediente automáticamente
-     */
+    public function appointments()
+    {
+        return $this->hasMany(Appointment::class);
+    }
+
     public static function generarNumeroExpediente(): string
     {
         $ultimo = self::orderBy('id', 'desc')->first();
         $numero = $ultimo ? (int) substr($ultimo->numero_expediente, 4) + 1 : 1;
         return 'EXP-' . str_pad($numero, 4, '0', STR_PAD_LEFT);
+    }
+
+    public function expedienteIncompleto(): bool
+    {
+        return $this->domicilio_actual === 'Por completar'
+            || $this->lugar_nacimiento === 'Por completar'
+            || $this->edad === 0;
     }
 }
