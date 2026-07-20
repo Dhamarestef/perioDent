@@ -67,7 +67,7 @@
             <div class="cita-header">
                 <div>
                     <div class="cita-servicio">{{ $appointment->service->name }}</div>
-                    <div class="cita-fecha">📅 {{ $appointment->appointment_date->format('d/m/Y H:i') }}</div>
+                    <div class="cita-fecha">📅 {{ $appointment->appointment_date->format('d/m/Y\TH:i') }}</div>
                 </div>
                 <div>
                     @if ($appointment->isPending())
@@ -96,7 +96,7 @@
                 </div>
                 <div class="info-item">
                     <label>Fecha y hora</label>
-                    <span>{{ $appointment->appointment_date->format('d/m/Y H:i') }}</span>
+                    <span>{{ $appointment->appointment_date->format('d/m/Y\TH:i') }}</span>
                 </div>
                 @if ($appointment->notes)
                     <div class="info-item full">
@@ -108,7 +108,7 @@
 
             @if ($appointment->isConfirmed())
                 <div class="confirmed-box">
-                    ✓ Cita confirmada el {{ $appointment->confirmed_at->format('d/m/Y H:i') }}
+                    ✓ Cita confirmada el {{ $appointment->confirmed_at->format('d/m/Y\TH:i') }}
                 </div>
             @elseif ($appointment->isPending())
                 <div class="pending-box">

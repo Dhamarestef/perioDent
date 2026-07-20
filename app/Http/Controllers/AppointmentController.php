@@ -12,21 +12,260 @@ use Illuminate\Support\Str;
 
 class AppointmentController extends Controller
 {
+    /**
+     * Vista principal: el calendario interactivo.
+     */
     public function index()
     {
-        $appointments = Appointment::with(['service', 'patient'])
-            ->where('user_id', auth()->id())
+        $services = Service::all();
+        $estados = Appointment::$estados;
+
+        $prePatient = null;
+        if (request('patient')) {
+            $prePatient = Patient::find(request('patient'));
+        }
+
+        return view('appointments.index', compact('services', 'estados', 'prePatient'));
+    }
+
+    /**
+     * Alimenta el calendario (FullCalendar) con las citas en formato evento.
+     */
+    public function events(Request $request)
+    {
+        $query = Appointment::with(['service', 'patient']);
+
+        if ($request->filled('start')) {
+            $query->where('appointment_date', '>=', $request->start);
+        }
+        if ($request->filled('end')) {
+            $query->where('appointment_date', '<=', $request->end);
+        }
+
+        $appointments = $query->orderBy('appointment_date')->get();
+
+        return response()->json($appointments->map(fn ($a) => $this->toEvent($a)));
+    }
+
+    /**
+     * Buscador rápido de citas por nombre, expediente o teléfono (barra superior del calendario).
+     */
+    public function searchAppointments(Request $request)
+    {
+        $q = $request->get('q', '');
+
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $appointments = Appointment::with(['patient', 'service'])
+            ->where(function ($query) use ($q) {
+                $query->where('nombre_temporal', 'LIKE', "%{$q}%")
+                    ->orWhere('telefono_temporal', 'LIKE', "%{$q}%")
+                    ->orWhereHas('patient', function ($p) use ($q) {
+                        $p->where('nombre', 'LIKE', "%{$q}%")
+                            ->orWhere('numero_expediente', 'LIKE', "%{$q}%")
+                            ->orWhere('telefono', 'LIKE', "%{$q}%");
+                    });
+            })
             ->orderBy('appointment_date', 'desc')
+            ->limit(8)
             ->get();
 
-        return view('appointments.index', compact('appointments'));
+        return response()->json($appointments->map(function ($a) {
+            return [
+                'id' => $a->id,
+                'date' => $a->appointment_date->toIso8601String(),
+                'label' => $a->nombrePaciente() . ' — ' . $a->appointment_date->format('d/m/Y H:i'),
+                'status' => $a->estadoLabel(),
+            ];
+        }));
     }
+
+    /**
+     * Creación rápida desde el calendario: paciente registrado o de primera vez.
+     */
+    public function storeQuick(Request $request)
+    {
+        $request->validate([
+            'appointment_date' => 'required|date',
+            'end_date' => 'nullable|date|after:appointment_date',
+            'notes' => 'nullable|string|max:500',
+            'patient_id' => 'nullable|exists:patients,id',
+            'nombre_temporal' => 'required_without:patient_id|string|max:255',
+            'telefono_temporal' => 'nullable|string|max:20',
+            'service_id' => 'required_with:patient_id|exists:services,id',
+        ], [
+            'appointment_date.required' => 'Selecciona la fecha y hora',
+            'nombre_temporal.required_without' => 'Indica el nombre del paciente',
+            'service_id.required_with' => 'Selecciona un servicio',
+        ]);
+
+        $isWalkIn = ! $request->filled('patient_id');
+
+        if ($isWalkIn) {
+            $service = Service::firstOrCreate(
+                ['name' => 'Consulta de primera vez'],
+                ['description' => 'Primera consulta para pacientes no registrados', 'price' => 0, 'duration' => 30, 'buffer_time' => 0]
+            );
+        } else {
+            $service = Service::findOrFail($request->service_id);
+        }
+
+        $start = Carbon::parse($request->appointment_date);
+        $end = $request->end_date ? Carbon::parse($request->end_date) : $start->copy()->addMinutes($service->duration);
+
+        $appointment = Appointment::create([
+            'user_id' => auth()->id(),
+            'patient_id' => $isWalkIn ? null : $request->patient_id,
+            'nombre_temporal' => $isWalkIn ? $request->nombre_temporal : null,
+            'telefono_temporal' => $isWalkIn ? $request->telefono_temporal : null,
+            'service_id' => $service->id,
+            'appointment_date' => $start,
+            'end_date' => $end,
+            'status' => 'programada',
+            'notes' => $request->notes,
+            'confirmation_token' => Str::random(32),
+        ]);
+
+        $appointment->load(['service', 'patient']);
+
+        if ($appointment->patient && $appointment->patient->correo) {
+            try {
+                \Mail::send('emails.appointment-confirmation', [
+                    'appointment' => $appointment,
+                    'confirmationLink' => route('appointment.confirm', $appointment->confirmation_token),
+                ], function ($message) use ($appointment) {
+                    $message->to($appointment->patient->correo)
+                        ->subject('Confirma tu cita — ' . $appointment->service->name);
+                });
+            } catch (\Exception $e) {
+                // no interrumpir el flujo si falla el correo
+            }
+        }
+
+        return response()->json(['ok' => true, 'event' => $this->toEvent($appointment)]);
+    }
+
+    /**
+     * Arrastrar/soltar o redimensionar una cita en el calendario.
+     */
+    public function updateDates(Request $request, Appointment $appointment)
+    {
+        $request->validate([
+            'appointment_date' => 'required|date',
+            'end_date' => 'nullable|date|after:appointment_date',
+        ]);
+
+        $appointment->update([
+            'appointment_date' => $request->appointment_date,
+            'end_date' => $request->end_date,
+        ]);
+
+        return response()->json(['ok' => true, 'event' => $this->toEvent($appointment->fresh(['service', 'patient']))]);
+    }
+
+    /**
+     * Editar los detalles completos de una cita desde el modal del calendario.
+     */
+    public function updateDetails(Request $request, Appointment $appointment)
+    {
+        $request->validate([
+            'service_id' => 'required|exists:services,id',
+            'appointment_date' => 'required|date',
+            'end_date' => 'nullable|date|after:appointment_date',
+            'notes' => 'nullable|string|max:500',
+            'nombre_temporal' => 'nullable|string|max:255',
+            'telefono_temporal' => 'nullable|string|max:20',
+        ]);
+
+        $service = Service::findOrFail($request->service_id);
+        $start = Carbon::parse($request->appointment_date);
+        $end = $request->end_date ? Carbon::parse($request->end_date) : $start->copy()->addMinutes($service->duration);
+
+        $data = [
+            'service_id' => $service->id,
+            'appointment_date' => $start,
+            'end_date' => $end,
+            'notes' => $request->notes,
+        ];
+
+        if (! $appointment->patient_id) {
+            $data['nombre_temporal'] = $request->nombre_temporal;
+            $data['telefono_temporal'] = $request->telefono_temporal;
+        }
+
+        $appointment->update($data);
+
+        return response()->json(['ok' => true, 'event' => $this->toEvent($appointment->fresh(['service', 'patient']))]);
+    }
+
+    /**
+     * Cambiar el estado de la cita (Programada/Confirmada/En consulta/Finalizada/Cancelada/No asistió).
+     */
+    public function updateStatus(Request $request, Appointment $appointment)
+    {
+        $request->validate([
+            'status' => 'required|in:' . implode(',', array_keys(Appointment::$estados)),
+        ]);
+
+        $data = ['status' => $request->status];
+        if ($request->status === 'confirmada' && ! $appointment->confirmed_at) {
+            $data['confirmed_at'] = now();
+        }
+
+        $appointment->update($data);
+
+        return response()->json(['ok' => true, 'event' => $this->toEvent($appointment->fresh(['service', 'patient']))]);
+    }
+
+    /**
+     * Eliminar definitivamente una cita.
+     */
+    public function destroy(Appointment $appointment)
+    {
+        $appointment->delete();
+
+        return response()->json(['ok' => true]);
+    }
+
+    private function toEvent(Appointment $a): array
+    {
+        $start = $a->appointment_date;
+        $end = $a->end_date ?: $start->copy()->addMinutes($a->service->duration ?? 30);
+
+        return [
+            'id' => $a->id,
+            'title' => $a->nombrePaciente() . ' — ' . ($a->service->name ?? ''),
+            'start' => $start->toIso8601String(),
+            'end' => $end->toIso8601String(),
+            'color' => $a->estadoColor(),
+            'extendedProps' => [
+                'status' => $a->status,
+                'statusLabel' => $a->estadoLabel(),
+                'patientId' => $a->patient_id,
+                'patientName' => $a->nombrePaciente(),
+                'expediente' => $a->patient->numero_expediente ?? null,
+                'phone' => $a->telefonoPaciente(),
+                'serviceId' => $a->service_id,
+                'serviceName' => $a->service->name ?? '',
+                'notes' => $a->notes,
+                'isWalkIn' => $a->esPacienteNuevo(),
+                'nombreTemporal' => $a->nombre_temporal,
+                'telefonoTemporal' => $a->telefono_temporal,
+            ],
+        ];
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // Métodos anteriores — se conservan por compatibilidad
+    // (formulario simple /appointments/create, confirmación por email, etc.)
+    // ══════════════════════════════════════════════════════════
 
     public function create()
     {
         $services = Service::all();
 
-        // Si viene con ?patient=ID pre-selecciona el paciente
         $prePatient = null;
         if (request('patient')) {
             $prePatient = Patient::find(request('patient'));
@@ -68,10 +307,9 @@ class AppointmentController extends Controller
             'appointment_date'   => $appointmentDate,
             'notes'              => $request->notes,
             'confirmation_token' => Str::random(32),
-            'status'             => 'pending',
+            'status'             => 'programada',
         ]);
 
-        // Enviar email solo si el paciente tiene correo
         if ($patient->correo) {
             try {
                 \Mail::send('emails.appointment-confirmation', [
@@ -171,7 +409,7 @@ class AppointmentController extends Controller
             return back()->withErrors(['error' => 'Esta cita ya está cancelada']);
         }
 
-        $appointment->update(['status' => 'cancelled']);
+        $appointment->update(['status' => 'cancelada']);
 
         return back()->with('success', 'Cita cancelada correctamente');
     }
@@ -187,7 +425,7 @@ class AppointmentController extends Controller
         }
 
         $appointment->update([
-            'status'             => 'confirmed',
+            'status'             => 'confirmada',
             'confirmed_at'       => now(),
             'confirmation_token' => null,
         ]);
@@ -237,7 +475,7 @@ class AppointmentController extends Controller
         $endTime = $dateTime->copy()->addMinutes($service->duration);
 
         $query = Appointment::where('service_id', $serviceId)
-                            ->where('status', '!=', 'cancelled')
+                            ->where('status', '!=', 'cancelada')
                             ->where(function ($q) use ($dateTime, $endTime) {
                                 $q->whereBetween('appointment_date', [$dateTime, $endTime])
                                   ->orWhere(function ($q2) use ($dateTime, $endTime) {

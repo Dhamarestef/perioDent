@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'PerioDent'),
 
     /*
     |--------------------------------------------------------------------------
@@ -63,9 +63,14 @@ return [
     | will be used by the PHP date and date-time functions. The timezone
     | is set to "UTC" by default as it is suitable for most use cases.
     |
+    | IMPORTANTE: se cambió a la zona horaria de México (Ciudad de México /
+    | Central) para que las citas se comparen contra la hora local real del
+    | usuario y no contra UTC. Esto evita el error "la fecha debe ser
+    | posterior a la fecha actual" al agendar citas en el futuro cercano.
+    |
     */
 
-    'timezone' => 'UTC',
+    'timezone' => env('APP_TIMEZONE', 'America/Mexico_City'),
 
     /*
     |--------------------------------------------------------------------------
@@ -78,11 +83,11 @@ return [
     |
     */
 
-    'locale' => env('APP_LOCALE', 'en'),
+    'locale' => env('APP_LOCALE', 'es'),
 
-    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'en'),
+    'fallback_locale' => env('APP_FALLBACK_LOCALE', 'es'),
 
-    'faker_locale' => env('APP_FAKER_LOCALE', 'en_US'),
+    'faker_locale' => env('APP_FAKER_LOCALE', 'es_MX'),
 
     /*
     |--------------------------------------------------------------------------

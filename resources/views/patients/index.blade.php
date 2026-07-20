@@ -31,6 +31,9 @@
         tr:last-child td { border-bottom: none; }
         tr:hover td { background-color: #f9f9f9; }
 
+        .expediente-link { color: #667eea; font-weight: bold; text-decoration: none; }
+        .expediente-link:hover { text-decoration: underline; }
+
         .badge-f { background-color: #fce4ec; color: #880e4f; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
         .badge-m { background-color: #e3f2fd; color: #0d47a1; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
 
@@ -91,7 +94,13 @@
                 <tbody>
                     @foreach ($patients as $patient)
                         <tr>
-                            <td><strong>{{ $patient->numero_expediente }}</strong></td>
+                            <td>
+                                <a href="{{ route('odontogram.show', $patient->id) }}"
+                                   class="expediente-link"
+                                   title="Abrir odontograma">
+                                    🦷 {{ $patient->numero_expediente }}
+                                </a>
+                            </td>
                             <td>
                                 {{ $patient->nombre }}
                                 @if ($patient->expedienteIncompleto())

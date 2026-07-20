@@ -8,6 +8,7 @@ use App\Http\Controllers\AppointmentController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\TreatmentController;
 use App\Http\Controllers\MedicationController;
+use App\Http\Controllers\OdontogramController;
 
 // ── Públicas ──────────────────────────────────────────────
 Route::get('/', function () {
@@ -57,14 +58,29 @@ Route::middleware('auth')->group(function () {
     Route::put('/patients/{id}',           [PatientController::class, 'update'])->name('patients.update');
     Route::delete('/patients/{id}',        [PatientController::class, 'destroy'])->name('patients.destroy');
 
-    // ── Citas ──
-    Route::get('/appointments/api/available-slots', [AppointmentController::class, 'getAvailableSlots'])->name('appointment.slots');
-    Route::get('/appointments',                     [AppointmentController::class, 'index'])->name('appointment.index');
-    Route::get('/appointments/create',              [AppointmentController::class, 'create'])->name('appointment.create');
-    Route::post('/appointments',                    [AppointmentController::class, 'store'])->name('appointment.store');
-    Route::get('/appointments/{appointment}',       [AppointmentController::class, 'show'])->name('appointment.show');
-    Route::get('/appointments/{appointment}/edit',  [AppointmentController::class, 'edit'])->name('appointment.edit');
-    Route::put('/appointments/{appointment}',       [AppointmentController::class, 'update'])->name('appointment.update');
+    // ── Odontograma ──
+    Route::get('/patients/{patient}/odontograma', [OdontogramController::class, 'show'])->name('odontogram.show');
+    Route::put('/patients/{patient}/odontograma/tooth/{tooth}', [OdontogramController::class, 'updateEstado'])->name('odontogram.tooth.update');
+    Route::post('/patients/{patient}/odontograma/tooth/{tooth}/treatments', [OdontogramController::class, 'storeTreatment'])->name('odontogram.treatments.store');
+    Route::put('/odontograma/treatments/{treatment}', [OdontogramController::class, 'updateTreatment'])->name('odontogram.treatments.update');
+    Route::delete('/odontograma/treatments/{treatment}', [OdontogramController::class, 'destroyTreatment'])->name('odontogram.treatments.destroy');
+
+    // ── Citas (calendario) ──
+    // OJO: rutas específicas ANTES de /appointments/{appointment} para que Laravel no las confunda
+    Route::get('/appointments/events',              [AppointmentController::class, 'events'])->name('appointment.events');
+    Route::get('/appointments/search-quick',         [AppointmentController::class, 'searchAppointments'])->name('appointment.search-quick');
+    Route::get('/appointments/api/available-slots',  [AppointmentController::class, 'getAvailableSlots'])->name('appointment.slots');
+    Route::post('/appointments/quick',               [AppointmentController::class, 'storeQuick'])->name('appointment.quick-store');
+    Route::get('/appointments',                      [AppointmentController::class, 'index'])->name('appointment.index');
+    Route::get('/appointments/create',               [AppointmentController::class, 'create'])->name('appointment.create');
+    Route::post('/appointments',                     [AppointmentController::class, 'store'])->name('appointment.store');
+    Route::put('/appointments/{appointment}/dates',   [AppointmentController::class, 'updateDates'])->name('appointment.update-dates');
+    Route::put('/appointments/{appointment}/details', [AppointmentController::class, 'updateDetails'])->name('appointment.update-details');
+    Route::put('/appointments/{appointment}/status',  [AppointmentController::class, 'updateStatus'])->name('appointment.update-status');
+    Route::delete('/appointments/{appointment}/hard-delete', [AppointmentController::class, 'destroy'])->name('appointment.destroy');
+    Route::get('/appointments/{appointment}',        [AppointmentController::class, 'show'])->name('appointment.show');
+    Route::get('/appointments/{appointment}/edit',   [AppointmentController::class, 'edit'])->name('appointment.edit');
+    Route::put('/appointments/{appointment}',        [AppointmentController::class, 'update'])->name('appointment.update');
     Route::post('/appointments/{appointment}/cancel', [AppointmentController::class, 'cancel'])->name('appointment.cancel');
 
     // ── Tratamientos ──

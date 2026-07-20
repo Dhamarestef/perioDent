@@ -32,6 +32,16 @@ class Patient extends Model
         return $this->hasMany(Appointment::class);
     }
 
+    public function odontogramTeeth()
+    {
+        return $this->hasMany(OdontogramTooth::class);
+    }
+
+    public function odontogramTreatments()
+    {
+        return $this->hasMany(OdontogramTreatment::class);
+    }
+
     public static function generarNumeroExpediente(): string
     {
         $ultimo = self::orderBy('id', 'desc')->first();
