@@ -417,11 +417,27 @@ class AppointmentController extends Controller
     public function confirm($token)
     {
         $appointment = Appointment::with(['service', 'user', 'patient'])
-                                  ->where('confirmation_token', $token)
-                                  ->firstOrFail();
+                                ->where('confirmation_token', $token)
+                                ->first();
 
+        // Token que no existe o pertenece a otra cita
+        if (! $appointment) {
+            return view('appointments.confirm-invalid');
+        }
+
+        // Ya estaba confirmada (link reutilizado)
         if ($appointment->isConfirmed()) {
             return view('appointments.already-confirmed');
+        }
+
+        // La cita fue cancelada mientras tanto
+        if ($appointment->isCancelled()) {
+            return view('appointments.confirm-invalid');
+        }
+
+        // El enlace venció (2 horas antes de la cita)
+        if ($appointment->tokenExpirado()) {
+            return view('appointments.confirm-expired', compact('appointment'));
         }
 
         $appointment->update([

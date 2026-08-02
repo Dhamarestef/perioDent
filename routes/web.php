@@ -9,45 +9,39 @@ use App\Http\Controllers\PatientController;
 use App\Http\Controllers\TreatmentController;
 use App\Http\Controllers\MedicationController;
 use App\Http\Controllers\OdontogramController;
+use App\Http\Controllers\PrescriptionController;
 
 // ── Públicas ──────────────────────────────────────────────
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
-// Autenticación
 Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
 Route::post('/register', [AuthController::class, 'register']);
 Route::get('/login',    [AuthController::class, 'showLogin'])->name('login');
 Route::post('/login',   [AuthController::class, 'login']);
 
-// Recuperación de contraseña
 Route::get('/forgot-password',        [PasswordResetController::class, 'showForgotForm'])->name('password.forgot');
 Route::post('/forgot-password',       [PasswordResetController::class, 'sendResetLink'])->name('password.send-reset-link');
 Route::get('/reset-password/{token}', [PasswordResetController::class, 'showResetForm'])->name('password.reset');
 Route::post('/reset-password',        [PasswordResetController::class, 'updatePassword'])->name('password.update');
 
-// Confirmación de cita (pública — el paciente accede desde su email)
 Route::get('/confirm-appointment/{token}', [AppointmentController::class, 'confirm'])->name('appointment.confirm');
 
 // ── Protegidas ────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
 
-    // Dashboard
     Route::get('/dashboard', function () {
         return view('dashboard');
     })->name('dashboard');
 
-    // Perfil
     Route::get('/profile/edit',      [ProfileController::class, 'edit'])->name('profile.edit');
     Route::post('/profile/update',   [ProfileController::class, 'update'])->name('profile.update');
     Route::get('/profile/{id}',      [ProfileController::class, 'show'])->name('profile.show');
 
-    // Logout
     Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 
     // ── Pacientes ──
-    // OJO: search y quick-store ANTES de {id} para que Laravel no los confunda
     Route::get('/patients/search',         [PatientController::class, 'search'])->name('patients.search');
     Route::post('/patients/quick-store',   [PatientController::class, 'quickStore'])->name('patients.quick-store');
     Route::get('/patients',                [PatientController::class, 'index'])->name('patients.index');
@@ -65,8 +59,15 @@ Route::middleware('auth')->group(function () {
     Route::put('/odontograma/treatments/{treatment}', [OdontogramController::class, 'updateTreatment'])->name('odontogram.treatments.update');
     Route::delete('/odontograma/treatments/{treatment}', [OdontogramController::class, 'destroyTreatment'])->name('odontogram.treatments.destroy');
 
+    // ── Recetas médicas ──
+    Route::get('/patients/{patient}/prescriptions/create', [PrescriptionController::class, 'create'])->name('prescriptions.create');
+    Route::post('/patients/{patient}/prescriptions',        [PrescriptionController::class, 'store'])->name('prescriptions.store');
+    Route::get('/prescriptions/{prescription}',              [PrescriptionController::class, 'show'])->name('prescriptions.show');
+    Route::get('/prescriptions/{prescription}/pdf',          [PrescriptionController::class, 'pdf'])->name('prescriptions.pdf');
+    Route::get('/prescriptions/{prescription}/duplicate',    [PrescriptionController::class, 'duplicate'])->name('prescriptions.duplicate');
+    Route::delete('/prescriptions/{prescription}',           [PrescriptionController::class, 'destroy'])->name('prescriptions.destroy');
+
     // ── Citas (calendario) ──
-    // OJO: rutas específicas ANTES de /appointments/{appointment} para que Laravel no las confunda
     Route::get('/appointments/events',              [AppointmentController::class, 'events'])->name('appointment.events');
     Route::get('/appointments/search-quick',         [AppointmentController::class, 'searchAppointments'])->name('appointment.search-quick');
     Route::get('/appointments/api/available-slots',  [AppointmentController::class, 'getAvailableSlots'])->name('appointment.slots');
@@ -93,6 +94,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/treatments/{id}',    [TreatmentController::class, 'destroy'])->name('treatments.destroy');
 
     // ── Medicamentos ──
+    Route::get('/medications/search-catalog', [MedicationController::class, 'searchCatalog'])->name('medications.search-catalog');
     Route::get('/medications',           [MedicationController::class, 'index'])->name('medications.index');
     Route::get('/medications/create',    [MedicationController::class, 'create'])->name('medications.create');
     Route::post('/medications',          [MedicationController::class, 'store'])->name('medications.store');

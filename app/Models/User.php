@@ -10,9 +10,6 @@ class User extends Authenticatable
 {
     use HasFactory, Notifiable;
 
-    /**
-     * Los atributos que se pueden asignar masivamente
-     */
     protected $fillable = [
         'name',
         'email',
@@ -20,29 +17,28 @@ class User extends Authenticatable
         'phone',
         'bio',
         'avatar',
+        'cedula_profesional',
+        'especialidad',
+        'cedula_especialidad',
     ];
 
-    /**
-     * Los atributos que deben estar ocultos para serialización
-     */
     protected $hidden = [
         'password',
         'remember_token',
     ];
 
-    /**
-     * Los atributos que deben tener casting
-     */
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
 
-    /**
-     * Citas del usuario
-     */
     public function appointments()
     {
         return $this->hasMany(Appointment::class);
+    }
+
+    public function prescriptions()
+    {
+        return $this->hasMany(Prescription::class);
     }
 }

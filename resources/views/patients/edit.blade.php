@@ -181,6 +181,16 @@
                     </div>
                 </div>
 
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label for="alergias">Alergias</label>
+                        <input type="text" id="alergias" name="alergias"
+                               value="{{ old('alergias', $patient->alergias) }}"
+                               placeholder="Dejar vacío si no tiene alergias conocidas">
+                        @error('alergias') <span class="error-msg">{{ $message }}</span> @enderror
+                    </div>
+                </div>
+
                 <div class="btn-group">
                     <button type="submit" class="btn btn-save">💾 Guardar Cambios</button>
                     <a href="{{ route('patients.show', $patient->id) }}" class="btn btn-cancel">← Cancelar</a>

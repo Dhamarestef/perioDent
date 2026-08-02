@@ -75,6 +75,30 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="principio_activo">Principio activo</label>
+                    <input type="text" id="principio_activo" name="principio_activo"
+                           value="{{ old('principio_activo', $medication->principio_activo) }}"
+                           placeholder="Ej: Ibuprofeno">
+                    @error('principio_activo') <span class="error-msg">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="form-group">
+                    <label for="presentacion">Presentación</label>
+                    <input type="text" id="presentacion" name="presentacion"
+                           value="{{ old('presentacion', $medication->presentacion) }}"
+                           placeholder="Ej: 600 mg tabletas">
+                    @error('presentacion') <span class="error-msg">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="form-group">
+                    <label for="dosis_habitual">Dosis habitual</label>
+                    <input type="text" id="dosis_habitual" name="dosis_habitual"
+                           value="{{ old('dosis_habitual', $medication->dosis_habitual) }}"
+                           placeholder="Ej: 1 tableta cada 8 horas">
+                    @error('dosis_habitual') <span class="error-msg">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="form-group">
                     <label for="indicaciones">Indicaciones *</label>
                     <textarea id="indicaciones" name="indicaciones"
                               maxlength="500"

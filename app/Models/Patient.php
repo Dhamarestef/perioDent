@@ -20,6 +20,7 @@ class Patient extends Model
         'telefono',
         'lugar_residencia',
         'correo',
+        'alergias',
     ];
 
     protected $casts = [
@@ -42,6 +43,11 @@ class Patient extends Model
         return $this->hasMany(OdontogramTreatment::class);
     }
 
+    public function prescriptions()
+    {
+        return $this->hasMany(Prescription::class);
+    }
+
     public static function generarNumeroExpediente(): string
     {
         $ultimo = self::orderBy('id', 'desc')->first();
@@ -54,5 +60,10 @@ class Patient extends Model
         return $this->domicilio_actual === 'Por completar'
             || $this->lugar_nacimiento === 'Por completar'
             || $this->edad === 0;
+    }
+
+    public function alergiasParaReceta(): string
+    {
+        return $this->alergias ? $this->alergias : 'Interrogadas y negadas.';
     }
 }

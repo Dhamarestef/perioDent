@@ -410,6 +410,52 @@
                     </div>
                 </div>
 
+<!-- DATOS PROFESIONALES -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cedula_profesional">Cédula Profesional</label>
+                        <input
+                            type="text"
+                            id="cedula_profesional"
+                            name="cedula_profesional"
+                            value="{{ old('cedula_profesional', $user->cedula_profesional) }}"
+                            placeholder="Ej: 13416551"
+                        >
+                        @error('cedula_profesional')
+                            <span class="error-message">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label for="especialidad">Especialidad</label>
+                        <input
+                            type="text"
+                            id="especialidad"
+                            name="especialidad"
+                            value="{{ old('especialidad', $user->especialidad) }}"
+                            placeholder="Ej: Especialista en Periodoncia e Implantología"
+                        >
+                        @error('especialidad')
+                            <span class="error-message">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+
+                <div class="form-row full">
+                    <div class="form-group">
+                        <label for="cedula_especialidad">Cédula de Especialidad</label>
+                        <textarea
+                            id="cedula_especialidad"
+                            name="cedula_especialidad"
+                            placeholder="Ej: 16-026307-E&#10;15729630"
+                        >{{ old('cedula_especialidad', $user->cedula_especialidad) }}</textarea>
+                        <small style="color: #999; margin-top: 5px;">Estos datos aparecerán en la firma de las recetas médicas.</small>
+                        @error('cedula_especialidad')
+                            <span class="error-message">{{ $message }}</span>
+                        @enderror
+                    </div>
+                </div>
+
                 <!-- BOTONES -->
                 <div class="button-group">
                     <button type="submit" class="btn-save">💾 Guardar Cambios</button>

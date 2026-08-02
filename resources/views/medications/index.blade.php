@@ -17,6 +17,13 @@
         .btn-new:hover { background-color: #764ba2; }
         .success { background-color: #d4edda; color: #155724; padding: 14px; border-radius: 5px; margin-bottom: 20px; }
 
+        /* Buscador */
+        .search-bar { margin-bottom: 25px; }
+        .search-bar input { width: 100%; padding: 11px 16px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .search-bar input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 4px rgba(102,126,234,0.3); }
+
+        .empty-search { background: white; padding: 40px; border-radius: 10px; text-align: center; color: #999; box-shadow: 0 2px 10px rgba(0,0,0,0.06); display: none; }
+
         .categoria-block { margin-bottom: 35px; }
         .categoria-titulo { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 2px solid; display: flex; align-items: center; gap: 8px; }
         .titulo-analgesicos { color: #e67e22; border-color: #e67e22; }
@@ -64,8 +71,17 @@
             <a href="{{ route('medications.create') }}" class="btn-new">+ Nuevo Medicamento</a>
         </div>
 
+        <div class="search-bar">
+            <input type="text" id="busquedaMed" placeholder="🔍  Buscar por nombre o indicaciones..." onkeyup="filtrarMedicamentos()">
+        </div>
+
+        <div class="empty-search" id="emptySearch">
+            <h3>Sin resultados</h3>
+            <p>No encontramos medicamentos que coincidan con tu búsqueda.</p>
+        </div>
+
         @foreach ($medications as $categoria => $items)
-            <div class="categoria-block">
+            <div class="categoria-block" data-categoria-block>
                 <div class="categoria-titulo {{ $categoria === 'Analgésicos' ? 'titulo-analgesicos' : 'titulo-antibioticos' }}">
                     {{ $categoria === 'Analgésicos' ? '🟠' : '🔵' }} {{ $categoria }}
                     <span style="font-weight:normal; color:#999;">({{ $items->count() }} medicamentos)</span>
@@ -81,7 +97,7 @@
                     </thead>
                     <tbody>
                         @foreach ($items as $med)
-                            <tr>
+                            <tr data-med-row data-search="{{ strtolower($med->nombre.' '.$med->indicaciones) }}">
                                 <td><span class="nombre-med">{{ $med->nombre }}</span></td>
                                 <td><span class="indicaciones-text">{{ $med->indicaciones }}</span></td>
                                 <td>
@@ -103,5 +119,29 @@
             </div>
         @endforeach
     </div>
+
+    <script>
+        function filtrarMedicamentos() {
+            const q = document.getElementById('busquedaMed').value.toLowerCase().trim();
+            const bloques = document.querySelectorAll('[data-categoria-block]');
+            let totalVisibles = 0;
+
+            bloques.forEach(bloque => {
+                const filas = bloque.querySelectorAll('[data-med-row]');
+                let visiblesEnBloque = 0;
+
+                filas.forEach(fila => {
+                    const coincide = fila.dataset.search.includes(q);
+                    fila.style.display = coincide ? '' : 'none';
+                    if (coincide) visiblesEnBloque++;
+                });
+
+                bloque.style.display = visiblesEnBloque > 0 ? '' : 'none';
+                totalVisibles += visiblesEnBloque;
+            });
+
+            document.getElementById('emptySearch').style.display = totalVisibles === 0 ? 'block' : 'none';
+        }
+    </script>
 </body>
 </html>

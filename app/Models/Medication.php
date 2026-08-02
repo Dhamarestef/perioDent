@@ -10,6 +10,9 @@ class Medication extends Model
         'nombre',
         'categoria',
         'indicaciones',
+        'principio_activo',
+        'presentacion',
+        'dosis_habitual',
     ];
 
     public static $categorias = [

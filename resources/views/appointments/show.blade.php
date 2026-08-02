@@ -116,6 +116,22 @@
                 </div>
             @endif
 
+            <div class="section-title">Estado del recordatorio por email</div>
+                <div class="info-grid">
+                    <div class="info-item">
+                        <label>Estado de envío</label>
+                        <span style="color: {{ $appointment->emailEstadoColor() }}; font-weight: bold;">
+                            {{ $appointment->emailEstadoLabel() }}
+                        </span>
+                    </div>
+                    @if ($appointment->email_reminder_sent_at)
+                        <div class="info-item">
+                            <label>Enviado el</label>
+                            <span>{{ $appointment->email_reminder_sent_at->format('d/m/Y H:i') }}</span>
+                        </div>
+                    @endif
+                </div>
+
             <div class="btn-group">
                 @if ($appointment->isPending())
                     <a href="{{ route('appointment.edit', $appointment->id) }}" class="btn btn-edit">✏️ Editar</a>

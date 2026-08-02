@@ -29,6 +29,9 @@ class MedicationController extends Controller
             'nombre'       => 'required|string|max:255',
             'categoria'    => 'required|in:Analgésicos,Antibióticos',
             'indicaciones' => 'required|string|max:500',
+            'principio_activo' => 'nullable|string|max:255',
+            'presentacion'      => 'nullable|string|max:255',
+            'dosis_habitual'    => 'nullable|string|max:255',
         ], [
             'nombre.required'       => 'El nombre del medicamento es requerido',
             'categoria.required'    => 'La categoría es requerida',
@@ -64,6 +67,9 @@ class MedicationController extends Controller
             'nombre'       => 'required|string|max:255',
             'categoria'    => 'required|in:Analgésicos,Antibióticos',
             'indicaciones' => 'required|string|max:500',
+            'principio_activo' => 'nullable|string|max:255',
+            'presentacion'      => 'nullable|string|max:255',
+            'dosis_habitual'    => 'nullable|string|max:255',
         ], [
             'nombre.required'       => 'El nombre del medicamento es requerido',
             'categoria.required'    => 'La categoría es requerida',
@@ -84,5 +90,21 @@ class MedicationController extends Controller
 
         return redirect()->route('medications.index')
                          ->with('success', 'Medicamento eliminado correctamente');
+    }
+
+    public function searchCatalog(Request $request)
+    {
+        $q = $request->get('q', '');
+
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $medications = Medication::where('nombre', 'LIKE', "%{$q}%")
+                                 ->orderBy('nombre')
+                                 ->limit(8)
+                                 ->get(['id', 'nombre', 'principio_activo', 'presentacion', 'dosis_habitual', 'indicaciones']);
+
+        return response()->json($medications);
     }
 }

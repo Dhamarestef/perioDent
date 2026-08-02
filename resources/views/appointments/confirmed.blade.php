@@ -16,8 +16,7 @@
         .info-row:last-child { margin-bottom: 0; }
         .info-label { color: #666; }
         .info-value { font-weight: bold; color: #333; }
-        .btn { display: inline-block; background-color: #667eea; color: white; padding: 12px 30px; border-radius: 5px; text-decoration: none; font-weight: bold; font-size: 15px; transition: background-color 0.3s; }
-        .btn:hover { background-color: #764ba2; }
+        .closing-note { color: #999; font-size: 13px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -29,7 +28,7 @@
         <div class="info-box">
             <div class="info-row">
                 <span class="info-label">Paciente:</span>
-                <span class="info-value">{{ $appointment->user->name }}</span>
+                <span class="info-value">{{ $appointment->nombrePaciente() }}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Servicio:</span>
@@ -43,13 +42,15 @@
                 <span class="info-label">Duración:</span>
                 <span class="info-value">{{ $appointment->service->duration }} minutos</span>
             </div>
-            <div class="info-row">
-                <span class="info-label">Precio:</span>
-                <span class="info-value">${{ number_format($appointment->service->price, 2) }}</span>
-            </div>
+            @if ($appointment->service->price > 0)
+                <div class="info-row">
+                    <span class="info-label">Precio:</span>
+                    <span class="info-value">${{ number_format($appointment->service->price, 2) }}</span>
+                </div>
+            @endif
         </div>
 
-        <a href="{{ route('dashboard') }}" class="btn">Ir al Dashboard</a>
+        <p class="closing-note">Ya puedes cerrar esta ventana. Te esperamos en tu cita.</p>
     </div>
 </body>
 </html>

@@ -45,9 +45,13 @@ class SendAppointmentEmailReminders extends Command
                         ->subject('Recordatorio: tu cita es mañana — ' . $appointment->service->name);
                 });
 
-                $appointment->update(['email_reminder_sent_at' => now()]);
+                $appointment->update([
+                    'email_reminder_sent_at' => now(),
+                    'email_status'           => 'enviado',
+                ]);
                 $enviados++;
             } catch (\Exception $e) {
+                $appointment->update(['email_status' => 'error']);
                 $this->error("Error al enviar recordatorio a la cita #{$appointment->id}: {$e->getMessage()}");
                 $omitidos++;
             }

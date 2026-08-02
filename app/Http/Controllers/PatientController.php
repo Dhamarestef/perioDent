@@ -34,6 +34,7 @@ class PatientController extends Controller
             'telefono'         => 'nullable|string|max:20',
             'lugar_residencia' => 'required|string|max:255',
             'correo'           => 'nullable|email|max:255',
+            'alergias'         => 'nullable|string|max:1000',
         ], [
             'fecha_registro.required'   => 'La fecha de registro es requerida',
             'nombre.required'           => 'El nombre del paciente es requerido',
@@ -63,6 +64,7 @@ class PatientController extends Controller
             'telefono'          => $request->telefono,
             'lugar_residencia'  => $request->lugar_residencia,
             'correo'            => $request->correo,
+            'alergias'          => $request->alergias,
         ]);
 
         return redirect()->route('patients.index')
@@ -73,7 +75,12 @@ class PatientController extends Controller
     {
         $patient = Patient::with(['appointments.service'])
                           ->findOrFail($id);
-        return view('patients.show', compact('patient'));
+
+        $prescriptions = $patient->prescriptions()
+                                  ->orderBy('fecha_emision', 'desc')
+                                  ->get();
+
+        return view('patients.show', compact('patient', 'prescriptions'));
     }
 
     public function edit($id)
@@ -99,6 +106,7 @@ class PatientController extends Controller
             'telefono'         => 'nullable|string|max:20',
             'lugar_residencia' => 'required|string|max:255',
             'correo'           => 'nullable|email|max:255',
+            'alergias'         => 'nullable|string|max:1000',
         ], [
             'nombre.required'           => 'El nombre del paciente es requerido',
             'edad.required'             => 'La edad es requerida',
@@ -126,7 +134,6 @@ class PatientController extends Controller
                          ->with('success', 'Paciente eliminado correctamente');
     }
 
-    // ── Buscador AJAX ──
     public function search(Request $request)
     {
         $query = $request->get('q', '');
@@ -146,7 +153,6 @@ class PatientController extends Controller
         return response()->json($patients);
     }
 
-    // ── Registro rápido desde formulario de citas ──
     public function quickStore(Request $request)
     {
         $request->validate([

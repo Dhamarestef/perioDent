@@ -18,12 +18,15 @@ class Appointment extends Model
         'notes',
         'confirmation_token',
         'confirmed_at',
+        'email_reminder_sent_at',
+        'email_status',
     ];
 
     protected $casts = [
-        'appointment_date' => 'datetime',
-        'end_date'         => 'datetime',
-        'confirmed_at'     => 'datetime',
+        'appointment_date'        => 'datetime',
+        'end_date'                => 'datetime',
+        'confirmed_at'            => 'datetime',
+        'email_reminder_sent_at'  => 'datetime',
     ];
 
     /**
@@ -36,6 +39,15 @@ class Appointment extends Model
         'finalizada'  => ['label' => 'Finalizada',   'color' => '#667eea'],
         'cancelada'   => ['label' => 'Cancelada',    'color' => '#dc3545'],
         'no_asistio'  => ['label' => 'No asistió',   'color' => '#f0a500'],
+    ];
+
+    /**
+     * Catálogo de estados de envío del correo, para el panel admin.
+     */
+    public static array $emailEstados = [
+        'pendiente' => ['label' => 'Aún no enviado',  'color' => '#6c757d'],
+        'enviado'   => ['label' => 'Enviado',         'color' => '#28a745'],
+        'error'     => ['label' => 'Error al enviar', 'color' => '#dc3545'],
     ];
 
     public function user()
@@ -76,6 +88,28 @@ class Appointment extends Model
     public function esPacienteNuevo(): bool
     {
         return is_null($this->patient_id);
+    }
+
+    /**
+     * El enlace de confirmación deja de ser válido 2 horas antes de la cita.
+     */
+    public function tokenExpirado(): bool
+    {
+        if (! $this->confirmation_token) {
+            return true;
+        }
+
+        return now()->greaterThanOrEqualTo($this->appointment_date->copy()->subHours(2));
+    }
+
+    public function emailEstadoLabel(): string
+    {
+        return self::$emailEstados[$this->email_status ?? 'pendiente']['label'] ?? 'Desconocido';
+    }
+
+    public function emailEstadoColor(): string
+    {
+        return self::$emailEstados[$this->email_status ?? 'pendiente']['color'] ?? '#999999';
     }
 
     // ── Alias de compatibilidad con vistas existentes (show/edit/patients.show) ──
