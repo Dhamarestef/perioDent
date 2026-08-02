@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Medication;
 use App\Models\Patient;
 use App\Models\Prescription;
 use App\Models\PrescriptionItem;
@@ -15,31 +16,50 @@ class PrescriptionController extends Controller
         $prefillFecha = now()->toDateString();
         $prefillAlergias = $patient->alergiasParaReceta();
         $prefillItems = [];
+        $catalog = $this->catalogForPicker();
 
-        return view('prescriptions.create', compact('patient', 'prefillFecha', 'prefillAlergias', 'prefillItems'));
+        return view('prescriptions.create', compact('patient', 'prefillFecha', 'prefillAlergias', 'prefillItems', 'catalog'));
     }
 
     public function duplicate(Prescription $prescription)
     {
-        $prescription->load('items', 'patient');
+        $prescription->load('items.medication', 'patient');
 
         $patient = $prescription->patient;
         $prefillFecha = now()->toDateString();
         $prefillAlergias = $prescription->alergias;
+
+        // Al duplicar, si el medicamento sigue existiendo en el catálogo tomamos
+        // su información MÁS RECIENTE (por si la dosis/indicaciones cambiaron).
+        // Si el medicamento ya no existe en el catálogo, conservamos lo que
+        // quedó guardado en la receta original (histórico).
         $prefillItems = $prescription->items->map(function ($item) {
+            if ($item->medication_id && $item->medication) {
+                $med = $item->medication;
+
+                return [
+                    'medication_id'    => $med->id,
+                    'nombre_comercial' => $med->nombre,
+                    'principio_activo' => $med->principio_activo,
+                    'presentacion'     => $med->presentacion,
+                    'indicaciones'     => $med->indicaciones,
+                    'observaciones'    => $item->observaciones,
+                ];
+            }
+
             return [
+                'medication_id'    => null,
                 'nombre_comercial' => $item->nombre_comercial,
                 'principio_activo' => $item->principio_activo,
                 'presentacion'     => $item->presentacion,
-                'dosis'            => $item->dosis,
                 'indicaciones'     => $item->indicaciones,
-                'frecuencia'       => $item->frecuencia,
-                'duracion'         => $item->duracion,
                 'observaciones'    => $item->observaciones,
             ];
         })->toArray();
 
-        return view('prescriptions.create', compact('patient', 'prefillFecha', 'prefillAlergias', 'prefillItems'));
+        $catalog = $this->catalogForPicker();
+
+        return view('prescriptions.create', compact('patient', 'prefillFecha', 'prefillAlergias', 'prefillItems', 'catalog'));
     }
 
     public function store(Request $request, Patient $patient)
@@ -48,17 +68,12 @@ class PrescriptionController extends Controller
             'fecha_emision' => 'required|date',
             'alergias' => 'nullable|string|max:1000',
             'items' => 'required|array|min:1',
-            'items.*.nombre_comercial' => 'required|string|max:255',
-            'items.*.principio_activo' => 'nullable|string|max:255',
-            'items.*.presentacion' => 'nullable|string|max:255',
-            'items.*.dosis' => 'nullable|string|max:255',
-            'items.*.indicaciones' => 'nullable|string|max:500',
-            'items.*.frecuencia' => 'nullable|string|max:255',
-            'items.*.duracion' => 'nullable|string|max:255',
+            'items.*.medication_id' => 'required|exists:medications,id',
             'items.*.observaciones' => 'nullable|string|max:500',
         ], [
             'items.required' => 'Agrega al menos un medicamento a la receta',
-            'items.*.nombre_comercial.required' => 'Cada medicamento necesita un nombre comercial',
+            'items.*.medication_id.required' => 'Selecciona un medicamento del catálogo para cada renglón',
+            'items.*.medication_id.exists' => 'Uno de los medicamentos seleccionados no es válido',
         ]);
 
         $prescription = Prescription::create([
@@ -68,18 +83,30 @@ class PrescriptionController extends Controller
             'alergias' => $request->alergias,
         ]);
 
+        // IMPORTANTE: nunca confiamos en nombre_comercial / indicaciones que venga
+        // del formulario. Solo confiamos en el medication_id y copiamos la
+        // información real desde el catálogo (Eloquent), para que la receta
+        // quede como un historial inmutable y fiel a la base de datos.
+        $medications = Medication::whereIn('id', collect($request->items)->pluck('medication_id'))
+            ->get()
+            ->keyBy('id');
+
         foreach (array_values($request->items) as $index => $item) {
+            $med = $medications->get($item['medication_id']);
+
+            if (! $med) {
+                continue;
+            }
+
             PrescriptionItem::create([
-                'prescription_id' => $prescription->id,
-                'nombre_comercial' => $item['nombre_comercial'],
-                'principio_activo' => $item['principio_activo'] ?? null,
-                'presentacion' => $item['presentacion'] ?? null,
-                'dosis' => $item['dosis'] ?? null,
-                'indicaciones' => $item['indicaciones'] ?? null,
-                'frecuencia' => $item['frecuencia'] ?? null,
-                'duracion' => $item['duracion'] ?? null,
-                'observaciones' => $item['observaciones'] ?? null,
-                'orden' => $index,
+                'prescription_id'  => $prescription->id,
+                'medication_id'    => $med->id,
+                'nombre_comercial' => $med->nombre,
+                'principio_activo' => $med->principio_activo,
+                'presentacion'     => $med->presentacion,
+                'indicaciones'     => $med->indicaciones,
+                'observaciones'    => $item['observaciones'] ?? null,
+                'orden'            => $index,
             ]);
         }
 
@@ -111,5 +138,25 @@ class PrescriptionController extends Controller
 
         return redirect()->route('patients.show', $patient->id)
                          ->with('success', 'Receta eliminada correctamente');
+    }
+
+    /**
+     * Catálogo completo de medicamentos listo para el buscador del formulario.
+     * Se envía completo al frontend (normalmente son pocas decenas de
+     * registros) para que la búsqueda sea instantánea, sin ida y vuelta al
+     * servidor por cada tecla — así se reduce el número de clics/espera.
+     */
+    private function catalogForPicker()
+    {
+        return Medication::orderBy('nombre')
+            ->get(['id', 'nombre', 'principio_activo', 'presentacion', 'indicaciones'])
+            ->map(fn ($m) => [
+                'id'               => $m->id,
+                'nombre'           => $m->nombre,
+                'principio_activo' => $m->principio_activo,
+                'presentacion'     => $m->presentacion,
+                'indicaciones'     => $m->indicaciones,
+            ])
+            ->values();
     }
 }

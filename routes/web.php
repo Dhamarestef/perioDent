@@ -10,6 +10,7 @@ use App\Http\Controllers\TreatmentController;
 use App\Http\Controllers\MedicationController;
 use App\Http\Controllers\OdontogramController;
 use App\Http\Controllers\PrescriptionController;
+use App\Http\Controllers\BudgetController;
 
 // ── Públicas ──────────────────────────────────────────────
 Route::get('/', function () {
@@ -66,6 +67,16 @@ Route::middleware('auth')->group(function () {
     Route::get('/prescriptions/{prescription}/pdf',          [PrescriptionController::class, 'pdf'])->name('prescriptions.pdf');
     Route::get('/prescriptions/{prescription}/duplicate',    [PrescriptionController::class, 'duplicate'])->name('prescriptions.duplicate');
     Route::delete('/prescriptions/{prescription}',           [PrescriptionController::class, 'destroy'])->name('prescriptions.destroy');
+
+    // ── Presupuestos ──
+    Route::get('/patients/{patient}/budgets/create', [BudgetController::class, 'create'])->name('budgets.create');
+    Route::post('/patients/{patient}/budgets', [BudgetController::class, 'store'])->name('budgets.store');
+    Route::get('/budgets/{budget}', [BudgetController::class, 'show'])->name('budgets.show');
+    Route::get('/budgets/{budget}/edit', [BudgetController::class, 'edit'])->name('budgets.edit');
+    Route::put('/budgets/{budget}', [BudgetController::class, 'update'])->name('budgets.update');
+    Route::get('/budgets/{budget}/pdf', [BudgetController::class, 'pdf'])->name('budgets.pdf');
+    Route::get('/budgets/{budget}/duplicate', [BudgetController::class, 'duplicate'])->name('budgets.duplicate');
+    Route::delete('/budgets/{budget}', [BudgetController::class, 'destroy'])->name('budgets.destroy');
 
     // ── Citas (calendario) ──
     Route::get('/appointments/events',              [AppointmentController::class, 'events'])->name('appointment.events');

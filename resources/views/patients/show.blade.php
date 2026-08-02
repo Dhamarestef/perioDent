@@ -260,6 +260,62 @@
             @endif
         </div>
 
+    {{-- ── PRESUPUESTOS ── --}}
+    <div class="card">
+        <div class="section-title" style="margin-top:0; display:flex; justify-content:space-between; align-items:center;">
+            <span>
+                Presupuestos
+                <span style="font-weight:normal; color:#bbb; margin-left:8px;">
+                    ({{ $budgets->count() }})
+                </span>
+            </span>
+            <a href="{{ route('budgets.create', $patient->id) }}"
+            style="background-color:#667eea; color:white; padding:8px 16px; border-radius:5px; text-decoration:none; font-size:13px; font-weight:bold;">
+                ＋ Nuevo presupuesto
+            </a>
+        </div>
+
+        @if ($budgets->count() > 0)
+            <table class="history-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Conceptos</th>
+                        <th>Total</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach ($budgets as $budget)
+                        <tr>
+                            <td>{{ $budget->fecha->format('d/m/Y') }}</td>
+                            <td>{{ $budget->items->count() }} concepto(s)</td>
+                            <td>
+                                <strong style="color:#dc3545;">${{ number_format($budget->total(), 2) }}</strong>
+                                @if ($budget->tieneDescuento())
+                                    <span style="font-size:11px; color:#28a745; display:block;">
+                                        -{{ rtrim(rtrim(number_format($budget->descuento_porcentaje, 2), '0'), '.') }}% descuento
+                                    </span>
+                                @endif
+                            </td>
+                            <td>
+                                <a href="{{ route('budgets.show', $budget->id) }}"
+                                style="color:#667eea; font-size:12px; font-weight:bold; text-decoration:none;">
+                                    Ver →
+                                </a>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        @else
+            <div class="empty-history">
+                Este paciente no tiene presupuestos registrados aún.
+                <a href="{{ route('budgets.create', $patient->id) }}">Generar ahora →</a>
+            </div>
+        @endif
+    </div>
+
     </div>
 </body>
 </html>

@@ -48,6 +48,11 @@ class Patient extends Model
         return $this->hasMany(Prescription::class);
     }
 
+    public function budgets()
+    {
+        return $this->hasMany(Budget::class);
+    }
+
     public static function generarNumeroExpediente(): string
     {
         $ultimo = self::orderBy('id', 'desc')->first();

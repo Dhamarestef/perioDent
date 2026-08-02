@@ -74,13 +74,17 @@ class PatientController extends Controller
     public function show($id)
     {
         $patient = Patient::with(['appointments.service'])
-                          ->findOrFail($id);
+                        ->findOrFail($id);
 
         $prescriptions = $patient->prescriptions()
-                                  ->orderBy('fecha_emision', 'desc')
-                                  ->get();
+                                ->orderBy('fecha_emision', 'desc')
+                                ->get();
 
-        return view('patients.show', compact('patient', 'prescriptions'));
+        $budgets = $patient->budgets()
+                            ->orderBy('fecha', 'desc')
+                            ->get();
+
+        return view('patients.show', compact('patient', 'prescriptions', 'budgets'));
     }
 
     public function edit($id)
