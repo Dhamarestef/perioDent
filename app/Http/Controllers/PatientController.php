@@ -71,9 +71,9 @@ class PatientController extends Controller
                          ->with('success', 'Paciente registrado correctamente');
     }
 
-    public function show($id)
+  public function show($id)
     {
-        $patient = Patient::with(['appointments.service'])
+        $patient = Patient::with(['appointments'])
                         ->findOrFail($id);
 
         $prescriptions = $patient->prescriptions()

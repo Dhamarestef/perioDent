@@ -160,7 +160,7 @@
             </div>
         </div>
 
-        {{-- ── HISTORIAL DE CITAS ── --}}
+      {{-- ── HISTORIAL DE CITAS ── --}}
         <div class="card">
             <div class="section-title" style="margin-top:0;">
                 Historial de citas
@@ -170,12 +170,11 @@
             </div>
 
             @if ($patient->appointments->count() > 0)
-                <table class="history-table">
+               <table class="history-table">
                     <thead>
                         <tr>
                             <th>Fecha</th>
-                            <th>Servicio</th>
-                            <th>Precio</th>
+                            <th>Duración</th>
                             <th>Estado</th>
                             <th></th>
                         </tr>
@@ -184,8 +183,7 @@
                         @foreach ($patient->appointments->sortByDesc('appointment_date') as $apt)
                             <tr>
                                 <td>{{ $apt->appointment_date->format('d/m/Y H:i') }}</td>
-                                <td>{{ $apt->service->name }}</td>
-                                <td>${{ number_format($apt->service->price, 2) }}</td>
+                                <td>{{ $apt->duracionTexto() }}</td>
                                 <td>
                                     @if ($apt->isPending())
                                         <span class="s-badge s-pending">⏳ Pendiente</span>

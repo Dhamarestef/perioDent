@@ -17,7 +17,7 @@ class SendAppointmentEmailReminders extends Command
         $tomorrowStart = now()->addDay()->startOfDay();
         $tomorrowEnd = now()->addDay()->endOfDay();
 
-        $appointments = Appointment::with(['patient', 'service'])
+        $appointments = Appointment::with(['patient'])
             ->whereBetween('appointment_date', [$tomorrowStart, $tomorrowEnd])
             ->whereIn('status', ['programada', 'confirmada'])
             ->whereNull('email_reminder_sent_at')
@@ -40,9 +40,9 @@ class SendAppointmentEmailReminders extends Command
                     'confirmationLink' => $appointment->confirmation_token
                         ? route('appointment.confirm', $appointment->confirmation_token)
                         : route('dashboard'),
-                ], function ($message) use ($correo, $appointment) {
+                ], function ($message) use ($correo) {
                     $message->to($correo)
-                        ->subject('Recordatorio: tu cita es mañana — ' . $appointment->service->name);
+                        ->subject('Recordatorio: tu cita es mañana');
                 });
 
                 $appointment->update([

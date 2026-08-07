@@ -69,7 +69,7 @@
         </div>
 
         <div class="content">
-            <p>Hola {{ $appointment->user->name }},</p>
+            <p>Hola {{ $appointment->nombrePaciente() }},</p>
 
             <p>Tu cita ha sido reservada exitosamente. Por favor, confirma tu cita haciendo click en el botón de abajo:</p>
 
@@ -79,20 +79,12 @@
 
             <div class="appointment-info">
                 <div class="info-row">
-                    <span class="label">Servicio:</span>
-                    <span>{{ $appointment->service->name }}</span>
-                </div>
-                <div class="info-row">
                     <span class="label">Fecha y Hora:</span>
                     <span>{{ $appointment->appointment_date->format('d/m/Y H:i') }}</span>
                 </div>
                 <div class="info-row">
                     <span class="label">Duración:</span>
-                    <span>{{ $appointment->service->duration }} minutos</span>
-                </div>
-                <div class="info-row">
-                    <span class="label">Precio:</span>
-                    <span>${{ number_format($appointment->service->price, 2) }}</span>
+                    <span>{{ $appointment->duracionTexto() }}</span>
                 </div>
             </div>
 
@@ -104,6 +96,7 @@
             <p style="margin-top: 20px;">Si tienes preguntas, no dudes en contactarnos.</p>
 
             <div class="footer">
+                <p>{{ config('app.name') }}</p>
                 <p>Este es un email automático. Por favor no respondas a este correo.</p>
             </div>
         </div>

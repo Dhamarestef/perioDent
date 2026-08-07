@@ -31,23 +31,13 @@
                 <span class="info-value">{{ $appointment->nombrePaciente() }}</span>
             </div>
             <div class="info-row">
-                <span class="info-label">Servicio:</span>
-                <span class="info-value">{{ $appointment->service->name }}</span>
-            </div>
-            <div class="info-row">
                 <span class="info-label">Fecha y hora:</span>
                 <span class="info-value">{{ $appointment->appointment_date->format('d/m/Y H:i') }}</span>
             </div>
             <div class="info-row">
                 <span class="info-label">Duración:</span>
-                <span class="info-value">{{ $appointment->service->duration }} minutos</span>
+                <span class="info-value">{{ $appointment->duracionTexto() }}</span>
             </div>
-            @if ($appointment->service->price > 0)
-                <div class="info-row">
-                    <span class="info-label">Precio:</span>
-                    <span class="info-value">${{ number_format($appointment->service->price, 2) }}</span>
-                </div>
-            @endif
         </div>
 
         <p class="closing-note">Ya puedes cerrar esta ventana. Te esperamos en tu cita.</p>

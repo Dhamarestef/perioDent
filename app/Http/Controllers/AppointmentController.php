@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\Patient;
-use App\Models\Service;
 use App\Models\Schedule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -17,7 +16,6 @@ class AppointmentController extends Controller
      */
     public function index()
     {
-        $services = Service::all();
         $estados = Appointment::$estados;
 
         $prePatient = null;
@@ -25,7 +23,7 @@ class AppointmentController extends Controller
             $prePatient = Patient::find(request('patient'));
         }
 
-        return view('appointments.index', compact('services', 'estados', 'prePatient'));
+        return view('appointments.index', compact('estados', 'prePatient'));
     }
 
     /**
@@ -33,7 +31,7 @@ class AppointmentController extends Controller
      */
     public function events(Request $request)
     {
-        $query = Appointment::with(['service', 'patient']);
+        $query = Appointment::with(['patient']);
 
         if ($request->filled('start')) {
             $query->where('appointment_date', '>=', $request->start);
@@ -58,7 +56,7 @@ class AppointmentController extends Controller
             return response()->json([]);
         }
 
-        $appointments = Appointment::with(['patient', 'service'])
+        $appointments = Appointment::with(['patient'])
             ->where(function ($query) use ($q) {
                 $query->where('nombre_temporal', 'LIKE', "%{$q}%")
                     ->orWhere('telefono_temporal', 'LIKE', "%{$q}%")
@@ -90,37 +88,28 @@ class AppointmentController extends Controller
         $request->validate([
             'appointment_date' => 'required|date',
             'end_date' => 'nullable|date|after:appointment_date',
+            'duration_minutes' => 'nullable|integer|min:5',
             'notes' => 'nullable|string|max:500',
             'patient_id' => 'nullable|exists:patients,id',
             'nombre_temporal' => 'required_without:patient_id|string|max:255',
             'telefono_temporal' => 'nullable|string|max:20',
-            'service_id' => 'required_with:patient_id|exists:services,id',
         ], [
             'appointment_date.required' => 'Selecciona la fecha y hora',
             'nombre_temporal.required_without' => 'Indica el nombre del paciente',
-            'service_id.required_with' => 'Selecciona un servicio',
         ]);
 
         $isWalkIn = ! $request->filled('patient_id');
-
-        if ($isWalkIn) {
-            $service = Service::firstOrCreate(
-                ['name' => 'Consulta de primera vez'],
-                ['description' => 'Primera consulta para pacientes no registrados', 'price' => 0, 'duration' => 30, 'buffer_time' => 0]
-            );
-        } else {
-            $service = Service::findOrFail($request->service_id);
-        }
+        $duration = $request->duration_minutes ?? 30;
 
         $start = Carbon::parse($request->appointment_date);
-        $end = $request->end_date ? Carbon::parse($request->end_date) : $start->copy()->addMinutes($service->duration);
+        $end = $request->end_date ? Carbon::parse($request->end_date) : $start->copy()->addMinutes($duration);
 
         $appointment = Appointment::create([
             'user_id' => auth()->id(),
             'patient_id' => $isWalkIn ? null : $request->patient_id,
             'nombre_temporal' => $isWalkIn ? $request->nombre_temporal : null,
             'telefono_temporal' => $isWalkIn ? $request->telefono_temporal : null,
-            'service_id' => $service->id,
+            'duration_minutes' => $duration,
             'appointment_date' => $start,
             'end_date' => $end,
             'status' => 'programada',
@@ -128,7 +117,7 @@ class AppointmentController extends Controller
             'confirmation_token' => Str::random(32),
         ]);
 
-        $appointment->load(['service', 'patient']);
+        $appointment->load('patient');
 
         if ($appointment->patient && $appointment->patient->correo) {
             try {
@@ -137,7 +126,7 @@ class AppointmentController extends Controller
                     'confirmationLink' => route('appointment.confirm', $appointment->confirmation_token),
                 ], function ($message) use ($appointment) {
                     $message->to($appointment->patient->correo)
-                        ->subject('Confirma tu cita — ' . $appointment->service->name);
+                        ->subject('Confirma tu cita');
                 });
             } catch (\Exception $e) {
                 // no interrumpir el flujo si falla el correo
@@ -162,7 +151,7 @@ class AppointmentController extends Controller
             'end_date' => $request->end_date,
         ]);
 
-        return response()->json(['ok' => true, 'event' => $this->toEvent($appointment->fresh(['service', 'patient']))]);
+        return response()->json(['ok' => true, 'event' => $this->toEvent($appointment->fresh(['patient']))]);
     }
 
     /**
@@ -171,7 +160,7 @@ class AppointmentController extends Controller
     public function updateDetails(Request $request, Appointment $appointment)
     {
         $request->validate([
-            'service_id' => 'required|exists:services,id',
+            'duration_minutes' => 'nullable|integer|min:5',
             'appointment_date' => 'required|date',
             'end_date' => 'nullable|date|after:appointment_date',
             'notes' => 'nullable|string|max:500',
@@ -179,12 +168,12 @@ class AppointmentController extends Controller
             'telefono_temporal' => 'nullable|string|max:20',
         ]);
 
-        $service = Service::findOrFail($request->service_id);
+        $duration = $request->duration_minutes ?? $appointment->duration_minutes ?? 30;
         $start = Carbon::parse($request->appointment_date);
-        $end = $request->end_date ? Carbon::parse($request->end_date) : $start->copy()->addMinutes($service->duration);
+        $end = $request->end_date ? Carbon::parse($request->end_date) : $start->copy()->addMinutes($duration);
 
         $data = [
-            'service_id' => $service->id,
+            'duration_minutes' => $duration,
             'appointment_date' => $start,
             'end_date' => $end,
             'notes' => $request->notes,
@@ -197,7 +186,7 @@ class AppointmentController extends Controller
 
         $appointment->update($data);
 
-        return response()->json(['ok' => true, 'event' => $this->toEvent($appointment->fresh(['service', 'patient']))]);
+        return response()->json(['ok' => true, 'event' => $this->toEvent($appointment->fresh(['patient']))]);
     }
 
     /**
@@ -216,7 +205,7 @@ class AppointmentController extends Controller
 
         $appointment->update($data);
 
-        return response()->json(['ok' => true, 'event' => $this->toEvent($appointment->fresh(['service', 'patient']))]);
+        return response()->json(['ok' => true, 'event' => $this->toEvent($appointment->fresh(['patient']))]);
     }
 
     /**
@@ -232,11 +221,11 @@ class AppointmentController extends Controller
     private function toEvent(Appointment $a): array
     {
         $start = $a->appointment_date;
-        $end = $a->end_date ?: $start->copy()->addMinutes($a->service->duration ?? 30);
+        $end = $a->finCalculado();
 
         return [
             'id' => $a->id,
-            'title' => $a->nombrePaciente() . ' — ' . ($a->service->name ?? ''),
+            'title' => $a->nombrePaciente(),
             'start' => $start->toIso8601String(),
             'end' => $end->toIso8601String(),
             'color' => $a->estadoColor(),
@@ -247,8 +236,7 @@ class AppointmentController extends Controller
                 'patientName' => $a->nombrePaciente(),
                 'expediente' => $a->patient->numero_expediente ?? null,
                 'phone' => $a->telefonoPaciente(),
-                'serviceId' => $a->service_id,
-                'serviceName' => $a->service->name ?? '',
+                'durationMinutes' => $a->duration_minutes ?? 30,
                 'notes' => $a->notes,
                 'isWalkIn' => $a->esPacienteNuevo(),
                 'nombreTemporal' => $a->nombre_temporal,
@@ -258,44 +246,41 @@ class AppointmentController extends Controller
     }
 
     // ══════════════════════════════════════════════════════════
-    // Métodos anteriores — se conservan por compatibilidad
-    // (formulario simple /appointments/create, confirmación por email, etc.)
+    // Métodos anteriores — formulario simple /appointments/create,
+    // confirmación por email, etc.
     // ══════════════════════════════════════════════════════════
 
     public function create()
     {
-        $services = Service::all();
-
         $prePatient = null;
         if (request('patient')) {
             $prePatient = Patient::find(request('patient'));
         }
 
-        return view('appointments.create', compact('services', 'prePatient'));
+        return view('appointments.create', compact('prePatient'));
     }
 
     public function store(Request $request)
     {
         $request->validate([
             'patient_id'       => 'required|exists:patients,id',
-            'service_id'       => 'required|exists:services,id',
+            'duration_minutes' => 'nullable|integer|min:5',
             'appointment_date' => 'required|date_format:Y-m-d\TH:i|after:now',
             'notes'            => 'nullable|string|max:500',
         ], [
             'patient_id.required'       => 'Debes seleccionar o registrar un paciente',
             'patient_id.exists'         => 'El paciente seleccionado no es válido',
-            'service_id.required'       => 'Debes seleccionar un servicio',
-            'service_id.exists'         => 'El servicio seleccionado no es válido',
             'appointment_date.required' => 'Debes seleccionar una fecha y hora',
             'appointment_date.date_format' => 'El formato de fecha no es válido',
             'appointment_date.after'    => 'La fecha debe ser posterior a la fecha actual',
             'notes.max'                 => 'Las notas no pueden exceder 500 caracteres',
         ]);
 
+        $duration = $request->duration_minutes ?? 30;
         $appointmentDate = Carbon::createFromFormat('Y-m-d\TH:i', $request->appointment_date);
         $patient         = Patient::findOrFail($request->patient_id);
 
-        if (!$this->isTimeAvailable($appointmentDate, $request->service_id)) {
+        if (!$this->isTimeAvailable($appointmentDate, $duration)) {
             return back()->withErrors(['appointment_date' => 'Este horario no está disponible, elige otro'])
                          ->withInput();
         }
@@ -303,8 +288,9 @@ class AppointmentController extends Controller
         $appointment = Appointment::create([
             'user_id'            => auth()->id(),
             'patient_id'         => $patient->id,
-            'service_id'         => $request->service_id,
+            'duration_minutes'   => $duration,
             'appointment_date'   => $appointmentDate,
+            'end_date'           => $appointmentDate->copy()->addMinutes($duration),
             'notes'              => $request->notes,
             'confirmation_token' => Str::random(32),
             'status'             => 'programada',
@@ -315,9 +301,9 @@ class AppointmentController extends Controller
                 \Mail::send('emails.appointment-confirmation', [
                     'appointment'      => $appointment,
                     'confirmationLink' => route('appointment.confirm', $appointment->confirmation_token),
-                ], function ($message) use ($patient, $appointment) {
+                ], function ($message) use ($patient) {
                     $message->to($patient->correo)
-                            ->subject('Confirma tu cita — ' . $appointment->service->name);
+                            ->subject('Confirma tu cita');
                 });
             } catch (\Exception $e) {
                 // Si falla el correo no interrumpimos el flujo
@@ -330,7 +316,7 @@ class AppointmentController extends Controller
 
     public function show($id)
     {
-        $appointment = Appointment::with(['service', 'patient', 'user'])
+        $appointment = Appointment::with(['patient', 'user'])
                                   ->findOrFail($id);
 
         if ($appointment->user_id !== auth()->id()) {
@@ -342,7 +328,7 @@ class AppointmentController extends Controller
 
     public function edit($id)
     {
-        $appointment = Appointment::with(['service', 'patient'])->findOrFail($id);
+        $appointment = Appointment::with(['patient'])->findOrFail($id);
 
         if ($appointment->user_id !== auth()->id()) {
             abort(403);
@@ -352,8 +338,7 @@ class AppointmentController extends Controller
             return back()->withErrors(['error' => 'No puedes editar una cita ya confirmada']);
         }
 
-        $services = Service::all();
-        return view('appointments.edit', compact('appointment', 'services'));
+        return view('appointments.edit', compact('appointment'));
     }
 
     public function update(Request $request, $id)
@@ -369,27 +354,28 @@ class AppointmentController extends Controller
         }
 
         $request->validate([
-            'service_id'       => 'required|exists:services,id',
+            'duration_minutes' => 'nullable|integer|min:5',
             'appointment_date' => 'required|date_format:Y-m-d\TH:i|after:now',
             'notes'            => 'nullable|string|max:500',
         ], [
-            'service_id.required'          => 'Debes seleccionar un servicio',
             'appointment_date.required'    => 'Debes seleccionar una fecha y hora',
             'appointment_date.date_format' => 'El formato de fecha no es válido',
             'appointment_date.after'       => 'La fecha debe ser posterior a la fecha actual',
             'notes.max'                    => 'Las notas no pueden exceder 500 caracteres',
         ]);
 
+        $duration = $request->duration_minutes ?? $appointment->duration_minutes ?? 30;
         $appointmentDate = Carbon::createFromFormat('Y-m-d\TH:i', $request->appointment_date);
 
-        if (!$this->isTimeAvailable($appointmentDate, $request->service_id, $id)) {
+        if (!$this->isTimeAvailable($appointmentDate, $duration, $id)) {
             return back()->withErrors(['appointment_date' => 'Este horario no está disponible, elige otro'])
                          ->withInput();
         }
 
         $appointment->update([
-            'service_id'       => $request->service_id,
+            'duration_minutes' => $duration,
             'appointment_date' => $appointmentDate,
+            'end_date'         => $appointmentDate->copy()->addMinutes($duration),
             'notes'            => $request->notes,
         ]);
 
@@ -416,26 +402,22 @@ class AppointmentController extends Controller
 
     public function confirm($token)
     {
-        $appointment = Appointment::with(['service', 'user', 'patient'])
+        $appointment = Appointment::with(['user', 'patient'])
                                 ->where('confirmation_token', $token)
                                 ->first();
 
-        // Token que no existe o pertenece a otra cita
         if (! $appointment) {
             return view('appointments.confirm-invalid');
         }
 
-        // Ya estaba confirmada (link reutilizado)
         if ($appointment->isConfirmed()) {
             return view('appointments.already-confirmed');
         }
 
-        // La cita fue cancelada mientras tanto
         if ($appointment->isCancelled()) {
             return view('appointments.confirm-invalid');
         }
 
-        // El enlace venció (2 horas antes de la cita)
         if ($appointment->tokenExpirado()) {
             return view('appointments.confirm-expired', compact('appointment'));
         }
@@ -452,11 +434,11 @@ class AppointmentController extends Controller
     public function getAvailableSlots(Request $request)
     {
         $request->validate([
-            'service_id' => 'required|exists:services,id',
+            'duration_minutes' => 'nullable|integer|min:5',
             'date'       => 'required|date_format:Y-m-d',
         ]);
 
-        $service    = Service::findOrFail($request->service_id);
+        $duration   = $request->duration_minutes ?? 30;
         $date       = Carbon::createFromFormat('Y-m-d', $request->date);
         $dayOfWeek  = $date->dayOfWeek;
 
@@ -472,26 +454,24 @@ class AppointmentController extends Controller
         $current = Carbon::parse($date->format('Y-m-d') . ' ' . $schedule->start_time);
         $end     = Carbon::parse($date->format('Y-m-d') . ' ' . $schedule->end_time);
 
-        while ($current->copy()->addMinutes($service->duration)->lte($end)) {
-            if ($this->isTimeAvailable($current, $service->id)) {
+        while ($current->copy()->addMinutes($duration)->lte($end)) {
+            if ($this->isTimeAvailable($current, $duration)) {
                 $slots[] = [
                     'time'    => $current->format('H:i'),
                     'display' => $current->format('H:i'),
                 ];
             }
-            $current->addMinutes($service->duration + $service->buffer_time);
+            $current->addMinutes($duration);
         }
 
         return response()->json(['slots' => $slots]);
     }
 
-    private function isTimeAvailable($dateTime, $serviceId, $excludeId = null)
+    private function isTimeAvailable($dateTime, $duration, $excludeId = null)
     {
-        $service = Service::findOrFail($serviceId);
-        $endTime = $dateTime->copy()->addMinutes($service->duration);
+        $endTime = $dateTime->copy()->addMinutes($duration);
 
-        $query = Appointment::where('service_id', $serviceId)
-                            ->where('status', '!=', 'cancelada')
+        $query = Appointment::where('status', '!=', 'cancelada')
                             ->where(function ($q) use ($dateTime, $endTime) {
                                 $q->whereBetween('appointment_date', [$dateTime, $endTime])
                                   ->orWhere(function ($q2) use ($dateTime, $endTime) {

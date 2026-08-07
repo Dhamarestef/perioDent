@@ -26,16 +26,9 @@
 
         .form-group { margin-bottom: 20px; }
         label { display: block; margin-bottom: 8px; color: #333; font-weight: 500; font-size: 14px; }
-        select, input[type="datetime-local"], textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; transition: border-color 0.3s; font-family: inherit; }
+        select, input[type="datetime-local"], input[type="number"], textarea { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 5px; font-size: 14px; transition: border-color 0.3s; font-family: inherit; }
         select:focus, input:focus, textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 5px rgba(102,126,234,0.3); }
         textarea { resize: vertical; min-height: 90px; }
-
-        .service-details { background-color: #f9f9f9; padding: 14px; border-radius: 6px; margin-top: 10px; display: none; }
-        .service-details.show { display: block; }
-        .detail-row { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 6px; }
-        .detail-row:last-child { margin-bottom: 0; }
-        .detail-label { color: #666; }
-        .detail-value { font-weight: bold; color: #333; }
 
         .error-msg { color: #dc3545; font-size: 12px; margin-top: 5px; }
         .hint { color: #999; font-size: 12px; margin-top: 5px; display: block; }
@@ -139,30 +132,11 @@
 
                 <div id="restOfForm" class="{{ $prePatient ? '' : 'section-disabled' }}">
                     <div class="form-group">
-                        <label for="service_id">Servicio *</label>
-                        <select id="service_id" name="service_id" required onchange="showServiceDetails()">
-                            <option value="">-- Selecciona un servicio --</option>
-                            @foreach ($services as $service)
-                                <option value="{{ $service->id }}"
-                                        data-price="{{ $service->price }}"
-                                        data-duration="{{ $service->duration }}"
-                                        {{ old('service_id') == $service->id ? 'selected' : '' }}>
-                                    {{ $service->name }} — ${{ number_format($service->price, 2) }}
-                                </option>
-                            @endforeach
-                        </select>
-                        @error('service_id') <span class="error-msg">{{ $message }}</span> @enderror
-
-                        <div class="service-details" id="serviceDetails">
-                            <div class="detail-row">
-                                <span class="detail-label">Duración:</span>
-                                <span class="detail-value" id="duration">—</span>
-                            </div>
-                            <div class="detail-row">
-                                <span class="detail-label">Precio:</span>
-                                <span class="detail-value" id="price">—</span>
-                            </div>
-                        </div>
+                        <label for="duration_minutes">Duración de la cita (minutos) *</label>
+                        <input type="number" id="duration_minutes" name="duration_minutes"
+                               value="{{ old('duration_minutes', 30) }}" min="5" step="5" required>
+                        <span class="hint">El horario de finalización se calculará automáticamente según esta duración.</span>
+                        @error('duration_minutes') <span class="error-msg">{{ $message }}</span> @enderror
                     </div>
 
                     <div class="form-group">
@@ -192,20 +166,6 @@
     </div>
 
     <script>
-        function showServiceDetails() {
-            const select  = document.getElementById('service_id');
-            const option  = select.options[select.selectedIndex];
-            const details = document.getElementById('serviceDetails');
-            if (option.value) {
-                document.getElementById('duration').textContent = option.dataset.duration + ' minutos';
-                document.getElementById('price').textContent = '$' + parseFloat(option.dataset.price).toFixed(2);
-                details.classList.add('show');
-            } else {
-                details.classList.remove('show');
-            }
-        }
-        window.addEventListener('load', showServiceDetails);
-
         @if (!$prePatient)
         // Buscador de pacientes (solo cuando no viene preseleccionado)
         let searchTimeout = null;

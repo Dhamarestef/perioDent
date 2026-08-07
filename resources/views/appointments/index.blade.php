@@ -59,6 +59,9 @@
         select, input, textarea { width: 100%; padding: 9px 11px; border: 1px solid #ddd; border-radius: 5px; font-size: 13.5px; font-family: inherit; }
         select:focus, input:focus, textarea:focus { outline: none; border-color: #667eea; box-shadow: 0 0 4px rgba(102,126,234,0.3); }
         textarea { resize: vertical; min-height: 60px; }
+        input[readonly] { background-color: #f8f9fa; color: #666; }
+
+        .hint { color: #999; font-size: 12px; margin-top: 4px; display: block; }
 
         .patient-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
         .patient-toggle button { flex: 1; padding: 8px; border: 2px solid #ddd; border-radius: 6px; background: white; font-size: 12.5px; font-weight: bold; color: #666; cursor: pointer; }
@@ -175,23 +178,16 @@
                             <label for="walkInTelefono">Teléfono</label>
                             <input type="tel" id="walkInTelefono" placeholder="10 dígitos">
                         </div>
-                        <p style="font-size:12px; color:#999; margin-top:-8px; margin-bottom:14px;">Se registrará automáticamente con el servicio <strong>Consulta de primera vez</strong>.</p>
                     </div>
                 </div>
 
                 <!-- Info de paciente (solo al ver/editar cita existente) -->
                 <div id="patientReadonlySection" style="display:none;"></div>
 
-                <div class="form-group" id="serviceSelectGroup">
-                    <label for="serviceSelect">Servicio *</label>
-                    <select id="serviceSelect">
-                        <option value="">-- Selecciona un servicio --</option>
-                        @foreach ($services as $service)
-                            <option value="{{ $service->id }}" data-duration="{{ $service->duration }}">
-                                {{ $service->name }} — ${{ number_format($service->price, 2) }} ({{ $service->duration }} min)
-                            </option>
-                        @endforeach
-                    </select>
+                <div class="form-group" id="durationGroup">
+                    <label for="durationInput">Duración de la cita (minutos) *</label>
+                    <input type="number" id="durationInput" min="5" step="5" placeholder="Ej. 30">
+                    <span class="hint">El horario de finalización se calcula automáticamente.</span>
                 </div>
 
                 <div class="form-row">
@@ -201,7 +197,7 @@
                     </div>
                     <div class="form-group">
                         <label for="endInput">Hora de finalización</label>
-                        <input type="datetime-local" id="endInput">
+                        <input type="datetime-local" id="endInput" readonly>
                     </div>
                 </div>
 
@@ -333,7 +329,7 @@
 
             document.getElementById('citaSearch').addEventListener('input', debounce(handleCitaSearch, 300));
             document.getElementById('patientSearchInput').addEventListener('input', debounce(handlePatientSearch, 300));
-            document.getElementById('serviceSelect').addEventListener('change', recalcEnd);
+            document.getElementById('durationInput').addEventListener('input', recalcEnd);
             document.getElementById('startInput').addEventListener('change', recalcEnd);
 
             document.addEventListener('click', function (e) {
@@ -393,6 +389,19 @@
             return div.innerHTML;
         }
 
+        // ── Cálculo automático de la hora de finalización ──
+        function recalcEnd() {
+            const startVal = document.getElementById('startInput').value;
+            const duration = parseInt(document.getElementById('durationInput').value, 10);
+            if (!startVal || !duration) {
+                document.getElementById('endInput').value = '';
+                return;
+            }
+            const start = new Date(startVal);
+            const end = new Date(start.getTime() + duration * 60000);
+            document.getElementById('endInput').value = toLocalInput(end);
+        }
+
         // ── Modal: crear ──
         function openCreateModal(startStr, endStr) {
             mode = 'create';
@@ -411,16 +420,22 @@
 
             const start = startStr ? new Date(startStr) : new Date();
             document.getElementById('startInput').value = toLocalInput(start);
+
             if (endStr) {
-                document.getElementById('endInput').value = toLocalInput(new Date(endStr));
+                const end = new Date(endStr);
+                const diffMinutes = Math.round((end - start) / 60000);
+                document.getElementById('durationInput').value = diffMinutes > 0 ? diffMinutes : 30;
+            } else {
+                document.getElementById('durationInput').value = 30;
             }
+            recalcEnd();
 
             document.getElementById('modalOverlay').classList.add('open');
         }
 
         function resetForm() {
             document.getElementById('formError').style.display = 'none';
-            document.getElementById('serviceSelect').value = '';
+            document.getElementById('durationInput').value = '';
             document.getElementById('startInput').value = '';
             document.getElementById('endInput').value = '';
             document.getElementById('notesInput').value = '';
@@ -429,7 +444,6 @@
             document.getElementById('patientSearchInput').value = '';
             document.getElementById('selectedPatientBox').style.display = 'none';
             document.getElementById('patientSearchWrapper').style.display = 'block';
-            document.getElementById('serviceSelectGroup').style.display = 'block';
         }
 
         function setPatientMode(m) {
@@ -437,7 +451,6 @@
             document.querySelectorAll('#patientToggle button').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
             document.getElementById('registradoBlock').style.display = m === 'registrado' ? 'block' : 'none';
             document.getElementById('nuevoBlock').style.display = m === 'nuevo' ? 'block' : 'none';
-            document.getElementById('serviceSelectGroup').style.display = m === 'registrado' ? 'block' : 'none';
         }
 
         async function handlePatientSearch(e) {
@@ -477,17 +490,6 @@
             document.getElementById('patientSearchInput').value = '';
         }
 
-        function recalcEnd() {
-            const select = document.getElementById('serviceSelect');
-            const option = select.options[select.selectedIndex];
-            const startVal = document.getElementById('startInput').value;
-            if (!option || !option.value || !startVal) return;
-            const duration = parseInt(option.dataset.duration, 10) || 30;
-            const start = new Date(startVal);
-            const end = new Date(start.getTime() + duration * 60000);
-            document.getElementById('endInput').value = toLocalInput(end);
-        }
-
         // ── Modal: ver / editar cita existente ──
         function openEditModal(event) {
             mode = 'edit';
@@ -516,8 +518,7 @@
                 `;
             }
 
-            document.getElementById('serviceSelectGroup').style.display = 'block';
-            document.getElementById('serviceSelect').value = props.serviceId || '';
+            document.getElementById('durationInput').value = props.durationMinutes || 30;
             document.getElementById('startInput').value = toLocalInput(event.start);
             document.getElementById('endInput').value = event.end ? toLocalInput(event.end) : '';
             document.getElementById('notesInput').value = props.notes || '';
@@ -545,12 +546,17 @@
             errorBox.style.display = 'none';
 
             const start = document.getElementById('startInput').value;
-            const end = document.getElementById('endInput').value;
+            const duration = parseInt(document.getElementById('durationInput').value, 10);
             const notes = document.getElementById('notesInput').value.trim();
-            const serviceId = document.getElementById('serviceSelect').value;
 
             if (!start) {
                 errorBox.textContent = 'Selecciona la fecha y hora de la cita.';
+                errorBox.style.display = 'block';
+                return;
+            }
+
+            if (!duration || duration < 5) {
+                errorBox.textContent = 'Indica la duración de la cita (mínimo 5 minutos).';
                 errorBox.style.display = 'block';
                 return;
             }
@@ -559,7 +565,7 @@
                 if (mode === 'create') {
                     const payload = {
                         appointment_date: start,
-                        end_date: end || null,
+                        duration_minutes: duration,
                         notes: notes || null,
                     };
 
@@ -569,13 +575,7 @@
                             errorBox.style.display = 'block';
                             return;
                         }
-                        if (!serviceId) {
-                            errorBox.textContent = 'Selecciona un servicio.';
-                            errorBox.style.display = 'block';
-                            return;
-                        }
                         payload.patient_id = selectedPatient.id;
-                        payload.service_id = serviceId;
                     } else {
                         const nombre = document.getElementById('walkInNombre').value.trim();
                         if (!nombre) {
@@ -591,15 +591,9 @@
                     calendar.addEvent(data.event);
                     closeModal();
                 } else {
-                    if (!serviceId) {
-                        errorBox.textContent = 'Selecciona un servicio.';
-                        errorBox.style.display = 'block';
-                        return;
-                    }
                     const payload = {
-                        service_id: serviceId,
                         appointment_date: start,
-                        end_date: end || null,
+                        duration_minutes: duration,
                         notes: notes || null,
                     };
                     if (isWalkInEditing) {

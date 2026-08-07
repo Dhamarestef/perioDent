@@ -82,16 +82,12 @@
 
             <div class="appointment-info">
                 <div class="info-row">
-                    <span class="label">Servicio:</span>
-                    <span>{{ $appointment->service->name }}</span>
-                </div>
-                <div class="info-row">
                     <span class="label">Fecha y Hora:</span>
                     <span>{{ $appointment->appointment_date->format('d/m/Y H:i') }}</span>
                 </div>
                 <div class="info-row">
                     <span class="label">Duración:</span>
-                    <span>{{ $appointment->service->duration }} minutos</span>
+                    <span>{{ $appointment->duracionTexto() }}</span>
                 </div>
             </div>
 
@@ -113,6 +109,7 @@
             @endif
 
             <div class="footer">
+                <p>{{ config('app.name') }}</p>
                 <p>Este es un email automático. Por favor no respondas a este correo.</p>
             </div>
         </div>

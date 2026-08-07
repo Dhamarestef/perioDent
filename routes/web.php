@@ -11,6 +11,7 @@ use App\Http\Controllers\MedicationController;
 use App\Http\Controllers\OdontogramController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\BudgetController;
+use Illuminate\Support\Facades\Artisan;
 
 // ── Públicas ──────────────────────────────────────────────
 Route::get('/', function () {
@@ -28,6 +29,16 @@ Route::get('/reset-password/{token}', [PasswordResetController::class, 'showRese
 Route::post('/reset-password',        [PasswordResetController::class, 'updatePassword'])->name('password.update');
 
 Route::get('/confirm-appointment/{token}', [AppointmentController::class, 'confirm'])->name('appointment.confirm');
+
+Route::get('/cron/recordatorios/{token}', function (string $token) {
+    if (! hash_equals((string) config('app.cron_secret'), $token)) {
+        abort(403);
+    }
+
+    Artisan::call('appointments:send-email-reminders');
+
+    return response('ok: ' . Artisan::output());
+});
 
 // ── Protegidas ────────────────────────────────────────────
 Route::middleware('auth')->group(function () {
@@ -81,7 +92,6 @@ Route::middleware('auth')->group(function () {
     // ── Citas (calendario) ──
     Route::get('/appointments/events',              [AppointmentController::class, 'events'])->name('appointment.events');
     Route::get('/appointments/search-quick',         [AppointmentController::class, 'searchAppointments'])->name('appointment.search-quick');
-    Route::get('/appointments/api/available-slots',  [AppointmentController::class, 'getAvailableSlots'])->name('appointment.slots');
     Route::post('/appointments/quick',               [AppointmentController::class, 'storeQuick'])->name('appointment.quick-store');
     Route::get('/appointments',                      [AppointmentController::class, 'index'])->name('appointment.index');
     Route::get('/appointments/create',               [AppointmentController::class, 'create'])->name('appointment.create');

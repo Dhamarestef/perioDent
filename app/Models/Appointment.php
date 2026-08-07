@@ -11,7 +11,7 @@ class Appointment extends Model
         'patient_id',
         'nombre_temporal',
         'telefono_temporal',
-        'service_id',
+        'duration_minutes',
         'appointment_date',
         'end_date',
         'status',
@@ -60,11 +60,6 @@ class Appointment extends Model
         return $this->belongsTo(Patient::class);
     }
 
-    public function service()
-    {
-        return $this->belongsTo(Service::class);
-    }
-
     public function estadoLabel(): string
     {
         return self::$estados[$this->status]['label'] ?? ucfirst($this->status);
@@ -91,6 +86,22 @@ class Appointment extends Model
     }
 
     /**
+     * Texto legible de la duración de la cita, p. ej. "30 min".
+     */
+    public function duracionTexto(): string
+    {
+        return ($this->duration_minutes ?? 30) . ' min';
+    }
+
+    /**
+     * Fecha/hora de finalización calculada, por si end_date no estuviera guardado.
+     */
+    public function finCalculado()
+    {
+        return $this->end_date ?: $this->appointment_date->copy()->addMinutes($this->duration_minutes ?? 30);
+    }
+
+    /**
      * El enlace de confirmación deja de ser válido 2 horas antes de la cita.
      */
     public function tokenExpirado(): bool
@@ -112,7 +123,7 @@ class Appointment extends Model
         return self::$emailEstados[$this->email_status ?? 'pendiente']['color'] ?? '#999999';
     }
 
-    // ── Alias de compatibilidad con vistas existentes (show/edit/patients.show) ──
+    // ── Alias de compatibilidad con vistas existentes ──
     public function isPending(): bool
     {
         return $this->status === 'programada';
@@ -141,5 +152,9 @@ class Appointment extends Model
     public function isNoAsistio(): bool
     {
         return $this->status === 'no_asistio';
+    }
+    public function duracion(): int
+    {
+        return $this->duration_minutes ?? 30;
     }
 }

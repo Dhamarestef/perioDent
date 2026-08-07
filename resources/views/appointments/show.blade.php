@@ -66,7 +66,7 @@
         <div class="card">
             <div class="cita-header">
                 <div>
-                    <div class="cita-servicio">{{ $appointment->service->name }}</div>
+                    <div class="cita-servicio">Cita — {{ $appointment->duracionTexto() }}</div>
                     <div class="cita-fecha">📅 {{ $appointment->appointment_date->format('d/m/Y\TH:i') }}</div>
                 </div>
                 <div>
@@ -80,19 +80,11 @@
                 </div>
             </div>
 
-            <div class="section-title">Información del servicio</div>
+            <div class="section-title">Información de la cita</div>
             <div class="info-grid">
                 <div class="info-item">
-                    <label>Servicio</label>
-                    <span>{{ $appointment->service->name }}</span>
-                </div>
-                <div class="info-item">
                     <label>Duración</label>
-                    <span>{{ $appointment->service->duration }} minutos</span>
-                </div>
-                <div class="info-item">
-                    <label>Precio</label>
-                    <span>${{ number_format($appointment->service->price, 2) }}</span>
+                    <span>{{ $appointment->duracionTexto() }}</span>
                 </div>
                 <div class="info-item">
                     <label>Fecha y hora</label>
