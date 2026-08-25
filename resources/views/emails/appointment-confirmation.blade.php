@@ -53,6 +53,24 @@
             margin: 20px 0;
             font-weight: bold;
         }
+        .button-group {
+            text-align: center;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .button-cancel {
+            display: inline-block;
+            background-color: #ffffff;
+            color: #dc3545;
+            padding: 12px 30px;
+            border-radius: 5px;
+            text-decoration: none;
+            margin: 20px 0;
+            font-weight: bold;
+            border: 2px solid #dc3545;
+        }
         .footer {
             margin-top: 30px;
             padding-top: 20px;
@@ -73,10 +91,6 @@
 
             <p>Tu cita ha sido reservada exitosamente. Por favor, confirma tu cita haciendo click en el botón de abajo:</p>
 
-            <div style="text-align: center;">
-                <a href="{{ $confirmationLink }}" class="button">Confirmar Cita</a>
-            </div>
-
             <div class="appointment-info">
                 <div class="info-row">
                     <span class="label">Fecha y Hora:</span>
@@ -88,9 +102,22 @@
                 </div>
             </div>
 
-            <p>O copia y pega este enlace en tu navegador:</p>
+            <div class="button-group">
+                <a href="{{ $confirmationLink }}" class="button">Confirmar Cita</a>
+                <a href="{{ $cancelLink }}" class="button-cancel"
+                   onclick="return confirm('¿Seguro que deseas cancelar tu cita?');">
+                    Cancelar Cita
+                </a>
+            </div>
+
+            <p>Enlace para confirmar:</p>
             <p style="word-break: break-all; background-color: #f5f5f5; padding: 10px; border-radius: 4px;">
                 {{ $confirmationLink }}
+            </p>
+
+            <p>¿Necesitas cancelar? Usa este enlace:</p>
+            <p style="word-break: break-all; background-color: #f5f5f5; padding: 10px; border-radius: 4px; color: #dc3545;">
+                {{ $cancelLink }}
             </p>
 
             <p style="margin-top: 20px;">Si tienes preguntas, no dudes en contactarnos.</p>

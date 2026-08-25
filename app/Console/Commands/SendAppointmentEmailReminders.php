@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\Appointment;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 
 class SendAppointmentEmailReminders extends Command
 {
@@ -40,6 +41,7 @@ class SendAppointmentEmailReminders extends Command
                     'confirmationLink' => $appointment->confirmation_token
                         ? route('appointment.confirm', $appointment->confirmation_token)
                         : route('dashboard'),
+                    'cancelLink' => URL::signedRoute('appointment.cancel-public', ['appointment' => $appointment->id]),
                 ], function ($message) use ($correo) {
                     $message->to($correo)
                         ->subject('Recordatorio: tu cita es mañana');

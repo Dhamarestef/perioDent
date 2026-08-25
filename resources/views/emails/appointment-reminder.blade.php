@@ -53,6 +53,24 @@
             margin: 20px 0;
             font-weight: bold;
         }
+        .button-group {
+            text-align: center;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .button-cancel {
+            display: inline-block;
+            background-color: #ffffff;
+            color: #dc3545;
+            padding: 12px 30px;
+            border-radius: 5px;
+            text-decoration: none;
+            margin: 20px 0;
+            font-weight: bold;
+            border: 2px solid #dc3545;
+        }
         .already-confirmed {
             background-color: #d4edda;
             color: #155724;
@@ -95,18 +113,35 @@
                 <div class="already-confirmed">
                     ✓ Esta cita ya está confirmada. ¡Te esperamos!
                 </div>
+
+                <p>¿Ya no puedes asistir? Puedes cancelarla aquí:</p>
+                <div class="button-group">
+                    <a href="{{ $cancelLink }}" class="button-cancel"
+                       onclick="return confirm('¿Seguro que deseas cancelar tu cita?');">
+                        Cancelar Cita
+                    </a>
+                </div>
             @else
                 <p>Por favor confirma tu asistencia haciendo clic en el botón de abajo:</p>
 
-                <div style="text-align: center;">
+                <div class="button-group">
                     <a href="{{ $confirmationLink }}" class="button">Confirmar Cita</a>
+                    <a href="{{ $cancelLink }}" class="button-cancel"
+                       onclick="return confirm('¿Seguro que deseas cancelar tu cita?');">
+                        Cancelar Cita
+                    </a>
                 </div>
 
-                <p>O copia y pega este enlace en tu navegador:</p>
+                <p>Enlace para confirmar:</p>
                 <p style="word-break: break-all; background-color: #f5f5f5; padding: 10px; border-radius: 4px;">
                     {{ $confirmationLink }}
                 </p>
             @endif
+
+            <p>¿Necesitas cancelar? Usa este enlace:</p>
+            <p style="word-break: break-all; background-color: #f5f5f5; padding: 10px; border-radius: 4px; color: #dc3545;">
+                {{ $cancelLink }}
+            </p>
 
             <div class="footer">
                 <p>{{ config('app.name') }}</p>

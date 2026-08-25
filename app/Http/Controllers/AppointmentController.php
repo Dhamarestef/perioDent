@@ -8,6 +8,7 @@ use App\Models\Schedule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\URL;
 
 class AppointmentController extends Controller
 {
@@ -124,6 +125,7 @@ class AppointmentController extends Controller
                 \Mail::send('emails.appointment-confirmation', [
                     'appointment' => $appointment,
                     'confirmationLink' => route('appointment.confirm', $appointment->confirmation_token),
+                    'cancelLink' => URL::signedRoute('appointment.cancel-public', ['appointment' => $appointment->id]),
                 ], function ($message) use ($appointment) {
                     $message->to($appointment->patient->correo)
                         ->subject('Confirma tu cita');
@@ -301,6 +303,7 @@ class AppointmentController extends Controller
                 \Mail::send('emails.appointment-confirmation', [
                     'appointment'      => $appointment,
                     'confirmationLink' => route('appointment.confirm', $appointment->confirmation_token),
+                    'cancelLink'       => URL::signedRoute('appointment.cancel-public', ['appointment' => $appointment->id]),
                 ], function ($message) use ($patient) {
                     $message->to($patient->correo)
                             ->subject('Confirma tu cita');
@@ -398,6 +401,35 @@ class AppointmentController extends Controller
         $appointment->update(['status' => 'cancelada']);
 
         return back()->with('success', 'Cita cancelada correctamente');
+    }
+
+    /**
+     * Cancelación pública desde el enlace del correo (confirmación o recordatorio).
+     * Usa un enlace firmado (signed route) en vez del confirmation_token, porque
+     * ese token se anula al confirmar la cita y el botón de cancelar debe seguir
+     * funcionando incluso después de que el paciente ya confirmó.
+     */
+    public function cancelPublic(Appointment $appointment)
+    {
+        $appointment->load(['patient']);
+
+        if ($appointment->isCancelled()) {
+            return view('appointments.cancelled', [
+                'appointment' => $appointment,
+                'alreadyCancelled' => true,
+            ]);
+        }
+
+        if ($appointment->isFinalizada()) {
+            return view('appointments.confirm-invalid');
+        }
+
+        $appointment->update(['status' => 'cancelada']);
+
+        return view('appointments.cancelled', [
+            'appointment' => $appointment,
+            'alreadyCancelled' => false,
+        ]);
     }
 
     public function confirm($token)

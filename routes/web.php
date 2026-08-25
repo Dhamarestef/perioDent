@@ -30,6 +30,11 @@ Route::post('/reset-password',        [PasswordResetController::class, 'updatePa
 
 Route::get('/confirm-appointment/{token}', [AppointmentController::class, 'confirm'])->name('appointment.confirm');
 
+// Enlace firmado que llega en los correos (confirmación y recordatorio) para cancelar la cita
+Route::get('/cancel-appointment/{appointment}', [AppointmentController::class, 'cancelPublic'])
+    ->name('appointment.cancel-public')
+    ->middleware('signed');
+
 Route::get('/cron/recordatorios/{token}', function (string $token) {
     if (! hash_equals((string) config('app.cron_secret'), $token)) {
         abort(403);
