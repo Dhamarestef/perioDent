@@ -95,6 +95,14 @@
                 </div>
             </a>
 
+            <a href="{{ route('papelera.index') }}" class="card-link">
+                <div class="card">
+                    <div class="card-icon">🗑️</div>
+                    <h3>Papelera</h3>
+                    <p>Pacientes, presupuestos y recetas ocultados</p>
+                </div>
+            </a>
+
             <a href="{{ route('profile.edit') }}" class="card-link">
                 <div class="card">
                     <div class="card-icon">👤</div>

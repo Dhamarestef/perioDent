@@ -11,6 +11,7 @@ use App\Http\Controllers\MedicationController;
 use App\Http\Controllers\OdontogramController;
 use App\Http\Controllers\PrescriptionController;
 use App\Http\Controllers\BudgetController;
+use App\Http\Controllers\TrashController;
 use Illuminate\Support\Facades\Artisan;
 
 // ── Públicas ──────────────────────────────────────────────
@@ -126,4 +127,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/medications/{id}/edit', [MedicationController::class, 'edit'])->name('medications.edit');
     Route::put('/medications/{id}',      [MedicationController::class, 'update'])->name('medications.update');
     Route::delete('/medications/{id}',   [MedicationController::class, 'destroy'])->name('medications.destroy');
+
+    // ── Papelera ──
+    Route::get('/papelera', [TrashController::class, 'index'])->name('papelera.index');
+    Route::post('/papelera/{tipo}/{id}/restaurar', [TrashController::class, 'restore'])->name('papelera.restore');
+    Route::delete('/papelera/{tipo}/{id}', [TrashController::class, 'forceDelete'])->name('papelera.force-delete');
 });

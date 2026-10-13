@@ -97,7 +97,7 @@ class BudgetController extends Controller
         $budget->delete();
 
         return redirect()->route('patients.show', $patient->id)
-                         ->with('success', 'Presupuesto eliminado correctamente');
+                         ->with('success', 'Presupuesto ocultado correctamente');
     }
 
     private function validateRequest(Request $request): array

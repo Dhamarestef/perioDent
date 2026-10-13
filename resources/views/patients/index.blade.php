@@ -121,10 +121,10 @@
                                     <a href="{{ route('patients.edit', $patient->id) }}" class="btn-sm btn-edit">Editar</a>
                                     <a href="{{ route('appointment.create') }}?patient={{ $patient->id }}" class="btn-sm btn-apt">+ Cita</a>
                                     <form action="{{ route('patients.destroy', $patient->id) }}" method="POST"
-                                          onsubmit="return confirm('¿Eliminar este paciente? Esta acción no se puede deshacer.')">
+                                          onsubmit="return confirm('¿Ocultar este paciente?')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn-sm btn-del">Eliminar</button>
+                                        <button type="submit" class="btn-sm btn-del">Ocultar</button>
                                     </form>
                                 </div>
                             </td>

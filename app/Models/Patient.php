@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Patient extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'numero_expediente',
         'fecha_registro',
@@ -55,7 +58,8 @@ class Patient extends Model
 
     public static function generarNumeroExpediente(): string
     {
-        $ultimo = self::orderBy('id', 'desc')->first();
+        // withTrashed(): un paciente oculto sigue ocupando su número (columna unique)
+        $ultimo = self::withTrashed()->orderBy('id', 'desc')->first();
         $numero = $ultimo ? (int) substr($ultimo->numero_expediente, 4) + 1 : 1;
         return 'EXP-' . str_pad($numero, 4, '0', STR_PAD_LEFT);
     }

@@ -135,7 +135,7 @@ class PatientController extends Controller
         Patient::findOrFail($id)->delete();
 
         return redirect()->route('patients.index')
-                         ->with('success', 'Paciente eliminado correctamente');
+                         ->with('success', 'Paciente ocultado correctamente');
     }
 
     public function search(Request $request)

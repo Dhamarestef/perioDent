@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 class Budget extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'patient_id',
         'user_id',
@@ -23,7 +26,7 @@ class Budget extends Model
 
     public function patient()
     {
-        return $this->belongsTo(Patient::class);
+        return $this->belongsTo(Patient::class)->withTrashed();
     }
 
     public function user()

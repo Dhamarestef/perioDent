@@ -56,10 +56,10 @@
             <button type="button" class="btn btn-print" onclick="window.print()">🖨 Imprimir</button>
             <a href="{{ route('prescriptions.pdf', $prescription->id) }}" class="btn btn-pdf">⬇ Descargar PDF</a>
             <form action="{{ route('prescriptions.destroy', $prescription->id) }}" method="POST"
-                  onsubmit="return confirm('¿Eliminar esta receta?')">
+                  onsubmit="return confirm('¿Ocultar esta receta?')">
                 @csrf
                 @method('DELETE')
-                <button type="submit" class="btn btn-del">🗑 Eliminar</button>
+                <button type="submit" class="btn btn-del">🙈 Ocultar</button>
             </form>
         </div>
 

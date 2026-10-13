@@ -152,10 +152,10 @@
                 <a href="{{ route('appointment.create') }}?patient={{ $patient->id }}" class="btn btn-apt">📅 Nueva cita</a>
                 <a href="{{ route('patients.index') }}" class="btn btn-back">← Volver</a>
                 <form action="{{ route('patients.destroy', $patient->id) }}" method="POST"
-                      onsubmit="return confirm('¿Eliminar este paciente? Esta acción eliminará también sus citas.')">
+                      onsubmit="return confirm('¿Ocultar este paciente?')">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-del">🗑 Eliminar</button>
+                    <button type="submit" class="btn btn-del">🙈 Ocultar</button>
                 </form>
             </div>
         </div>

@@ -73,10 +73,10 @@
             <a href="{{ route('budgets.pdf', $budget->id) }}" class="btn btn-pdf">⬇ Descargar PDF</a>
             <a href="{{ route('budgets.edit', $budget->id) }}" class="btn btn-edit">✏️ Editar</a>
             <form action="{{ route('budgets.destroy', $budget->id) }}" method="POST"
-                  onsubmit="return confirm('¿Eliminar este presupuesto?')">
+                  onsubmit="return confirm('¿Ocultar este presupuesto?')">
                 @csrf
                 @method('DELETE')
-                <button type="submit" class="btn btn-del">🗑 Eliminar</button>
+                <button type="submit" class="btn btn-del">🙈 Ocultar</button>
             </form>
         </div>
 

@@ -96,7 +96,7 @@ class PrescriptionController extends Controller
         $prescription->delete();
 
         return redirect()->route('patients.show', $patient->id)
-                         ->with('success', 'Receta eliminada correctamente');
+                         ->with('success', 'Receta ocultada correctamente');
     }
 
     /**
