@@ -23,6 +23,7 @@ class Appointment extends Model
     ];
 
     protected $casts = [
+        'duration_minutes'        => 'integer',
         'appointment_date'        => 'datetime',
         'end_date'                => 'datetime',
         'confirmed_at'            => 'datetime',
@@ -98,7 +99,7 @@ class Appointment extends Model
      */
     public function finCalculado()
     {
-        return $this->end_date ?: $this->appointment_date->copy()->addMinutes($this->duration_minutes ?? 30);
+        return $this->end_date ?: $this->appointment_date->copy()->addMinutes((int) ($this->duration_minutes ?? 30));
     }
 
     /**
@@ -153,8 +154,9 @@ class Appointment extends Model
     {
         return $this->status === 'no_asistio';
     }
+
     public function duracion(): int
     {
-        return $this->duration_minutes ?? 30;
+        return (int) ($this->duration_minutes ?? 30);
     }
 }

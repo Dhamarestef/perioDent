@@ -155,7 +155,7 @@
                       onsubmit="return confirm('¿Ocultar este paciente?')">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-del">🙈 Ocultar</button>
+                    <button type="submit" class="btn btn-del"> Ocultar</button>
                 </form>
             </div>
         </div>

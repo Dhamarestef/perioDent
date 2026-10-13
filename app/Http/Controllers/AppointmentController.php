@@ -102,7 +102,7 @@ class AppointmentController extends Controller
         ]);
 
         $isWalkIn = ! $request->filled('patient_id');
-        $duration = $request->duration_minutes ?? 30;
+        $duration = (int) ($request->duration_minutes ?? 30);
 
         $start = $this->parseLocal($request->appointment_date);
         $end = $request->end_date
@@ -158,7 +158,7 @@ class AppointmentController extends Controller
         $start = $this->parseLocal($request->appointment_date);
         $end = $request->end_date
             ? $this->parseLocal($request->end_date)
-            : $start->copy()->addMinutes($appointment->duration_minutes ?? 30);
+            : $start->copy()->addMinutes((int) ($appointment->duration_minutes ?? 30));
 
         // Solo se valida "pasado" si realmente cambió la fecha de inicio
         if (! $start->equalTo($appointment->appointment_date)) {
@@ -189,7 +189,7 @@ class AppointmentController extends Controller
             'telefono_temporal' => 'nullable|string|max:20',
         ]);
 
-        $duration = $request->duration_minutes ?? $appointment->duration_minutes ?? 30;
+        $duration = (int) ($request->duration_minutes ?? $appointment->duration_minutes ?? 30);
         $start = $this->parseLocal($request->appointment_date);
         $end = $request->end_date
             ? $this->parseLocal($request->end_date)
@@ -306,7 +306,7 @@ class AppointmentController extends Controller
             'notes.max'                 => 'Las notas no pueden exceder 500 caracteres',
         ]);
 
-        $duration = $request->duration_minutes ?? 30;
+        $duration = (int) ($request->duration_minutes ?? 30);
         $appointmentDate = Carbon::createFromFormat('Y-m-d\TH:i', $request->appointment_date);
         $patient         = Patient::findOrFail($request->patient_id);
 
@@ -395,7 +395,7 @@ class AppointmentController extends Controller
             'notes.max'                    => 'Las notas no pueden exceder 500 caracteres',
         ]);
 
-        $duration = $request->duration_minutes ?? $appointment->duration_minutes ?? 30;
+        $duration = (int) ($request->duration_minutes ?? $appointment->duration_minutes ?? 30);
         $appointmentDate = Carbon::createFromFormat('Y-m-d\TH:i', $request->appointment_date);
 
         if (!$this->isTimeAvailable($appointmentDate, $duration, $id)) {
@@ -498,7 +498,7 @@ class AppointmentController extends Controller
             'date'       => 'required|date_format:Y-m-d',
         ]);
 
-        $duration   = $request->duration_minutes ?? 30;
+        $duration   = (int) ($request->duration_minutes ?? 30);
         $date       = Carbon::createFromFormat('Y-m-d', $request->date);
         $dayOfWeek  = $date->dayOfWeek;
 
@@ -558,7 +558,7 @@ class AppointmentController extends Controller
     /** Compatibilidad con store(), update() y getAvailableSlots(). */
     private function isTimeAvailable($dateTime, $duration, $excludeId = null)
     {
-        return ! $this->hasConflict($dateTime, $dateTime->copy()->addMinutes($duration), $excludeId);
+        return ! $this->hasConflict($dateTime, $dateTime->copy()->addMinutes((int) $duration), $excludeId ? (int) $excludeId : null);
     }
 
     private function assertNotPast(Carbon $start): void

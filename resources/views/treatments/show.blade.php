@@ -72,10 +72,10 @@
                 <a href="{{ route('treatments.edit', $treatment->id) }}" class="btn btn-edit">✏️ Editar</a>
                 <a href="{{ route('treatments.index') }}" class="btn btn-back">← Volver</a>
                 <form action="{{ route('treatments.destroy', $treatment->id) }}" method="POST"
-                      onsubmit="return confirm('¿Eliminar este tratamiento?')">
+                      onsubmit="return confirm('¿Ocultar este tratamiento?')">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-del">🗑 Eliminar</button>
+                    <button type="submit" class="btn btn-del">🙈 Ocultar</button>
                 </form>
             </div>
         </div>

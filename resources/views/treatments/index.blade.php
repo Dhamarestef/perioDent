@@ -124,10 +124,10 @@
                                         <a href="{{ route('treatments.show', $treatment->id) }}" class="btn-sm btn-view">Ver</a>
                                         <a href="{{ route('treatments.edit', $treatment->id) }}" class="btn-sm btn-edit">Editar</a>
                                         <form action="{{ route('treatments.destroy', $treatment->id) }}" method="POST"
-                                              onsubmit="return confirm('¿Eliminar este tratamiento?')">
+                                              onsubmit="return confirm('¿Ocultar este tratamiento?')">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="btn-sm btn-del">Eliminar</button>
+                                            <button type="submit" class="btn-sm btn-del">Ocultar</button>
                                         </form>
                                     </div>
                                 </td>

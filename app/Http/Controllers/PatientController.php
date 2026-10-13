@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Appointment;
 use App\Models\Patient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PatientController extends Controller
 {
@@ -71,7 +73,7 @@ class PatientController extends Controller
                          ->with('success', 'Paciente registrado correctamente');
     }
 
-  public function show($id)
+    public function show($id)
     {
         $patient = Patient::with(['appointments'])
                         ->findOrFail($id);
@@ -130,12 +132,31 @@ class PatientController extends Controller
                          ->with('success', 'Paciente actualizado correctamente');
     }
 
+    /**
+     * Oculta al paciente (soft delete) y elimina sus citas futuras.
+     * Las citas pasadas se conservan como historial.
+     */
     public function destroy($id)
     {
-        Patient::findOrFail($id)->delete();
+        $patient = Patient::findOrFail($id);
+
+        $citasEliminadas = 0;
+
+        DB::transaction(function () use ($patient, &$citasEliminadas) {
+            $citasEliminadas = Appointment::where('patient_id', $patient->id)
+                ->where('appointment_date', '>', now())
+                ->delete();
+
+            $patient->delete();
+        });
+
+        $mensaje = 'Paciente ocultado correctamente';
+        if ($citasEliminadas > 0) {
+            $mensaje .= " y se eliminaron {$citasEliminadas} cita(s) futura(s)";
+        }
 
         return redirect()->route('patients.index')
-                         ->with('success', 'Paciente ocultado correctamente');
+                         ->with('success', $mensaje);
     }
 
     public function search(Request $request)

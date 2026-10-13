@@ -25,8 +25,9 @@ class OdontogramTreatment extends Model
         return $this->belongsTo(Patient::class);
     }
 
+    // withTrashed: un tratamiento oculto sigue mostrándose en odontogramas ya registrados
     public function treatment()
     {
-        return $this->belongsTo(Treatment::class);
+        return $this->belongsTo(Treatment::class)->withTrashed();
     }
 }

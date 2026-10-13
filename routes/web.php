@@ -130,6 +130,7 @@ Route::middleware('auth')->group(function () {
 
     // ── Papelera ──
     Route::get('/papelera', [TrashController::class, 'index'])->name('papelera.index');
+    Route::delete('/papelera', [TrashController::class, 'empty'])->name('papelera.empty');
     Route::post('/papelera/{tipo}/{id}/restaurar', [TrashController::class, 'restore'])->name('papelera.restore');
     Route::delete('/papelera/{tipo}/{id}', [TrashController::class, 'forceDelete'])->name('papelera.force-delete');
 });

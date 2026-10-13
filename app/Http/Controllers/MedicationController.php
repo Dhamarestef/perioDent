@@ -89,7 +89,7 @@ class MedicationController extends Controller
         Medication::findOrFail($id)->delete();
 
         return redirect()->route('medications.index')
-                         ->with('success', 'Medicamento eliminado correctamente');
+                         ->with('success', 'Medicamento ocultado correctamente');
     }
 
     public function searchCatalog(Request $request)

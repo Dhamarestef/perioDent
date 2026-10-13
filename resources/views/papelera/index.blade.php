@@ -11,7 +11,7 @@
         .navbar a, .navbar button { color: white; text-decoration: none; padding: 8px 16px; border-radius: 5px; border: none; cursor: pointer; background: none; font-size: 14px; transition: background-color 0.3s; }
         .navbar a:hover, .navbar button:hover { background-color: rgba(255,255,255,0.2); }
         .container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; gap: 12px; flex-wrap: wrap; }
         h2 { color: #333; font-size: 26px; }
         .subtitle { color: #888; font-size: 13px; margin-bottom: 22px; }
         .success { background-color: #d4edda; color: #155724; padding: 14px; border-radius: 8px; margin-bottom: 20px; }
@@ -34,6 +34,8 @@
         .tag-paciente    { background-color: #e3f2fd; color: #0d47a1; }
         .tag-presupuesto { background-color: #fef3e2; color: #a0520e; }
         .tag-receta      { background-color: #eef0ff; color: #4a4db5; }
+        .tag-tratamiento { background-color: #e8f5e9; color: #1b5e20; }
+        .tag-medicamento { background-color: #fce4ec; color: #880e4f; }
 
         .muted { color: #999; font-size: 12px; }
         .btn-restore { background-color: #28a745; color: white; padding: 5px 14px; border-radius: 5px; border: none; font-size: 12px; font-weight: bold; cursor: pointer; }
@@ -42,6 +44,9 @@
         .acciones { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         .btn-force { background-color: #dc3545; color: white; padding: 5px 14px; border-radius: 5px; border: none; font-size: 12px; font-weight: bold; cursor: pointer; }
         .btn-force:hover { background-color: #c82333; }
+
+        .btn-empty { background-color: #dc3545; color: white; padding: 10px 20px; border-radius: 6px; border: none; font-size: 14px; font-weight: bold; cursor: pointer; transition: background-color 0.3s; }
+        .btn-empty:hover { background-color: #a71d2a; }
     </style>
 </head>
 <body>
@@ -66,8 +71,18 @@
 
         <div class="header">
             <h2>🗑 Papelera</h2>
+
+            @if ($items->isNotEmpty())
+                <form action="{{ route('papelera.empty') }}" method="POST"
+                      data-total="{{ $items->count() }}"
+                      onsubmit="return confirmarVaciado(this)">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="btn-empty">🗑 Vaciar papelera</button>
+                </form>
+            @endif
         </div>
-        <p class="subtitle">Pacientes, presupuestos y recetas ocultados. Lo más reciente aparece primero.</p>
+        <p class="subtitle">Pacientes, presupuestos, recetas, tratamientos y medicamentos ocultados. Lo más reciente aparece primero.</p>
 
         @if ($items->isEmpty())
             <div class="empty">
@@ -80,13 +95,15 @@
                 <button type="button" class="filter-btn" data-filter="paciente" onclick="filtrar('paciente', this)">Pacientes ({{ $items->where('tipo', 'paciente')->count() }})</button>
                 <button type="button" class="filter-btn" data-filter="presupuesto" onclick="filtrar('presupuesto', this)">Presupuestos ({{ $items->where('tipo', 'presupuesto')->count() }})</button>
                 <button type="button" class="filter-btn" data-filter="receta" onclick="filtrar('receta', this)">Recetas ({{ $items->where('tipo', 'receta')->count() }})</button>
+                <button type="button" class="filter-btn" data-filter="tratamiento" onclick="filtrar('tratamiento', this)">Tratamientos ({{ $items->where('tipo', 'tratamiento')->count() }})</button>
+                <button type="button" class="filter-btn" data-filter="medicamento" onclick="filtrar('medicamento', this)">Medicamentos ({{ $items->where('tipo', 'medicamento')->count() }})</button>
             </div>
 
             <table>
                 <thead>
                     <tr>
                         <th>Tipo</th>
-                        <th>Paciente</th>
+                        <th>Elemento</th>
                         <th>Detalle</th>
                         <th>Ocultado el</th>
                         <th></th>
@@ -132,10 +149,24 @@
             paciente: '¿ELIMINAR DEFINITIVAMENTE a este paciente?\n\nSe borrarán también su expediente, odontograma, presupuestos y recetas. Sus citas se conservarán pero quedarán sin paciente.\n\nEsta acción NO se puede deshacer.',
             presupuesto: '¿ELIMINAR DEFINITIVAMENTE este presupuesto?\n\nEsta acción NO se puede deshacer.',
             receta: '¿ELIMINAR DEFINITIVAMENTE esta receta?\n\nEsta acción NO se puede deshacer.',
+            tratamiento: '¿ELIMINAR DEFINITIVAMENTE este tratamiento?\n\nSe quitará también de los odontogramas de los pacientes donde esté registrado. En los presupuestos ya emitidos el concepto se conservará.\n\nEsta acción NO se puede deshacer.',
+            medicamento: '¿ELIMINAR DEFINITIVAMENTE este medicamento?\n\nEn las recetas ya emitidas el renglón se conservará.\n\nEsta acción NO se puede deshacer.',
         };
 
         function confirmarBorrado(form) {
             return confirm(avisos[form.dataset.tipo] || '¿Eliminar definitivamente? No se puede deshacer.');
+        }
+
+        function confirmarVaciado(form) {
+            const total = form.dataset.total;
+            return confirm(
+                '¿VACIAR LA PAPELERA?\n\n' +
+                'Se eliminarán DEFINITIVAMENTE los ' + total + ' elemento(s) de la papelera ' +
+                '(pacientes con su expediente y odontograma, presupuestos, recetas, tratamientos y medicamentos). ' +
+                'Las citas de los pacientes eliminados se conservarán pero quedarán sin paciente. ' +
+                'Los tratamientos eliminados se quitarán de los odontogramas donde estén registrados.\n\n' +
+                'Esta acción NO se puede deshacer.'
+            );
         }
 
         function filtrar(tipo, btn) {

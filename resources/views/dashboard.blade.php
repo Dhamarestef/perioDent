@@ -99,7 +99,7 @@
                 <div class="card">
                     <div class="card-icon">🗑️</div>
                     <h3>Papelera</h3>
-                    <p>Pacientes, presupuestos y recetas ocultados</p>
+                    <p>Pacientes, presupuestos, recetas, tratamientos y medicamentos ocultados</p>
                 </div>
             </a>
 

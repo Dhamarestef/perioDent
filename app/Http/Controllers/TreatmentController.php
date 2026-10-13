@@ -30,7 +30,7 @@ class TreatmentController extends Controller
             'categoria'   => 'required|in:General,Endodoncia,Cirugia y Periodoncia',
         ], [
             'abreviacion.required' => 'La abreviación es requerida',
-            'abreviacion.unique'   => 'Esta abreviación ya existe',
+            'abreviacion.unique'   => 'Esta abreviación ya existe (puede estar en la papelera)',
             'nombre.required'      => 'El nombre del tratamiento es requerido',
             'costo.numeric'        => 'El costo debe ser un número válido',
             'categoria.required'   => 'La categoría es requerida',
@@ -66,7 +66,7 @@ class TreatmentController extends Controller
             'categoria'   => 'required|in:General,Endodoncia,Cirugia y Periodoncia',
         ], [
             'abreviacion.required' => 'La abreviación es requerida',
-            'abreviacion.unique'   => 'Esta abreviación ya está registrada',
+            'abreviacion.unique'   => 'Esta abreviación ya está registrada (puede estar en la papelera)',
             'nombre.required'      => 'El nombre del tratamiento es requerido',
             'costo.numeric'        => 'El costo debe ser un número válido',
             'categoria.required'   => 'La categoría es requerida',
@@ -83,6 +83,6 @@ class TreatmentController extends Controller
         Treatment::findOrFail($id)->delete();
 
         return redirect()->route('treatments.index')
-                         ->with('success', 'Tratamiento eliminado correctamente');
+                         ->with('success', 'Tratamiento ocultado correctamente');
     }
 }

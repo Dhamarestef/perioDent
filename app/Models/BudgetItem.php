@@ -25,7 +25,7 @@ class BudgetItem extends Model
 
     public function treatment()
     {
-        return $this->belongsTo(Treatment::class);
+        return $this->belongsTo(Treatment::class)->withTrashed();
     }
 
     public function costoGlobal(): ?float

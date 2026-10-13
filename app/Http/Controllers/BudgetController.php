@@ -108,7 +108,9 @@ class BudgetController extends Controller
             'descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
             'promocion_bienvenida' => 'nullable|string|max:1000',
             'items' => 'required|array|min:1',
-            'items.*.treatment_id' => 'required|exists:treatments,id',
+            // withoutTrashed no se aplica: un presupuesto existente puede conservar
+            // un tratamiento que luego fue ocultado.
+            'items.*.treatment_id' => 'required|integer|exists:treatments,id',
             'items.*.cantidad' => 'required|integer|min:1',
         ], [
             'items.required' => 'Agrega al menos un concepto al presupuesto',
@@ -132,10 +134,14 @@ class BudgetController extends Controller
      * en el treatment_id. El nombre y precio reales se copian desde el
      * catálogo de Tratamientos (Eloquent), para que el presupuesto quede
      * como un histórico fiel a la base de datos en el momento de emitirse.
+     *
+     * withTrashed(): si un tratamiento fue ocultado después de crear el
+     * presupuesto, el renglón no debe perderse al editarlo.
      */
     private function syncItems(Budget $budget, array $items): void
     {
-        $treatments = Treatment::whereIn('id', collect($items)->pluck('treatment_id'))
+        $treatments = Treatment::withTrashed()
+            ->whereIn('id', collect($items)->pluck('treatment_id'))
             ->get()
             ->keyBy('id');
 

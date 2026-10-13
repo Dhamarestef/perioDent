@@ -76,7 +76,7 @@
                   onsubmit="return confirm('¿Ocultar este presupuesto?')">
                 @csrf
                 @method('DELETE')
-                <button type="submit" class="btn btn-del">🙈 Ocultar</button>
+                <button type="submit" class="btn btn-del"> Ocultar</button>
             </form>
         </div>
 

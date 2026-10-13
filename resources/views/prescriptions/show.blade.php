@@ -59,7 +59,7 @@
                   onsubmit="return confirm('¿Ocultar esta receta?')">
                 @csrf
                 @method('DELETE')
-                <button type="submit" class="btn btn-del">🙈 Ocultar</button>
+                <button type="submit" class="btn btn-del"> Ocultar</button>
             </form>
         </div>
 
