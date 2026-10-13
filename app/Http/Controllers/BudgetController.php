@@ -20,46 +20,6 @@ class BudgetController extends Controller
         return view('budgets.create', compact('patient', 'prefillFecha', 'prefillItems', 'catalog'));
     }
 
-    public function duplicate(Budget $budget)
-    {
-        $budget->load('items.treatment', 'patient');
-        $patient = $budget->patient;
-        $prefillFecha = now()->toDateString();
-
-        // Al duplicar tomamos el precio ACTUAL del catálogo (por si cambió),
-        // salvo que el tratamiento ya no exista, en cuyo caso conservamos
-        // el histórico guardado en el presupuesto original.
-        $prefillItems = $budget->items->map(function ($item) {
-            if ($item->treatment_id && $item->treatment) {
-                $t = $item->treatment;
-
-                return [
-                    'treatment_id' => $t->id,
-                    'concepto' => $t->nombre,
-                    'costo_unitario' => $t->costo,
-                    'cantidad' => $item->cantidad,
-                ];
-            }
-
-            return [
-                'treatment_id' => null,
-                'concepto' => $item->concepto,
-                'costo_unitario' => $item->costo_unitario,
-                'cantidad' => $item->cantidad,
-            ];
-        })->toArray();
-
-        $catalog = $this->catalogForPicker();
-        $prefillDiagnostico = $budget->diagnostico;
-        $prefillDescuento = $budget->descuento_porcentaje;
-        $prefillPromocion = $budget->promocion_bienvenida;
-
-        return view('budgets.create', compact(
-            'patient', 'prefillFecha', 'prefillItems', 'catalog',
-            'prefillDiagnostico', 'prefillDescuento', 'prefillPromocion'
-        ));
-    }
-
     public function store(Request $request, Patient $patient)
     {
         $validated = $this->validateRequest($request);

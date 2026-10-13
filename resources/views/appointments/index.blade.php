@@ -300,6 +300,12 @@
                 eventStartEditable: true,
                 eventDurationEditable: true,
                 selectable: true,
+                // No permitir seleccionar horarios que ya pasaron
+                selectAllow: function (info) {
+                    const now = new Date();
+                    now.setSeconds(0, 0);
+                    return info.start >= now;
+                },
                 events: function (info, successCallback, failureCallback) {
                     fetch(`${routes.events}?start=${info.startStr}&end=${info.endStr}`)
                         .then(r => r.json())
@@ -413,12 +419,20 @@
             document.getElementById('modalTitle').textContent = 'Nueva Cita';
             document.getElementById('patientSection').style.display = 'block';
             document.getElementById('patientReadonlySection').style.display = 'none';
+            document.getElementById('patientToggle').style.display = 'flex';
             document.getElementById('statusSelectWrap').classList.remove('show');
             document.getElementById('btnCancelCita').style.display = 'none';
             document.getElementById('btnDeleteCita').style.display = 'none';
             setPatientMode('registrado');
 
-            const start = startStr ? new Date(startStr) : new Date();
+            let start;
+            if (startStr) {
+                start = new Date(startStr);
+            } else {
+                // Próxima media hora redondeada (nunca una hora que ya pasó)
+                start = new Date();
+                start.setMinutes(Math.ceil((start.getMinutes() + 1) / 30) * 30, 0, 0);
+            }
             document.getElementById('startInput').value = toLocalInput(start);
 
             if (endStr) {

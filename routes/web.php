@@ -81,7 +81,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/patients/{patient}/prescriptions',        [PrescriptionController::class, 'store'])->name('prescriptions.store');
     Route::get('/prescriptions/{prescription}',              [PrescriptionController::class, 'show'])->name('prescriptions.show');
     Route::get('/prescriptions/{prescription}/pdf',          [PrescriptionController::class, 'pdf'])->name('prescriptions.pdf');
-    Route::get('/prescriptions/{prescription}/duplicate',    [PrescriptionController::class, 'duplicate'])->name('prescriptions.duplicate');
     Route::delete('/prescriptions/{prescription}',           [PrescriptionController::class, 'destroy'])->name('prescriptions.destroy');
 
     // ── Presupuestos ──
@@ -91,7 +90,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/budgets/{budget}/edit', [BudgetController::class, 'edit'])->name('budgets.edit');
     Route::put('/budgets/{budget}', [BudgetController::class, 'update'])->name('budgets.update');
     Route::get('/budgets/{budget}/pdf', [BudgetController::class, 'pdf'])->name('budgets.pdf');
-    Route::get('/budgets/{budget}/duplicate', [BudgetController::class, 'duplicate'])->name('budgets.duplicate');
     Route::delete('/budgets/{budget}', [BudgetController::class, 'destroy'])->name('budgets.destroy');
 
     // ── Citas (calendario) ──

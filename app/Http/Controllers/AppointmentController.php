@@ -8,7 +8,9 @@ use App\Models\Schedule;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Validation\ValidationException;
 
 class AppointmentController extends Controller
 {
@@ -102,8 +104,13 @@ class AppointmentController extends Controller
         $isWalkIn = ! $request->filled('patient_id');
         $duration = $request->duration_minutes ?? 30;
 
-        $start = Carbon::parse($request->appointment_date);
-        $end = $request->end_date ? Carbon::parse($request->end_date) : $start->copy()->addMinutes($duration);
+        $start = $this->parseLocal($request->appointment_date);
+        $end = $request->end_date
+            ? $this->parseLocal($request->end_date)
+            : $start->copy()->addMinutes($duration);
+
+        $this->assertNotPast($start);
+        $this->assertSlotFree($start, $end);
 
         $appointment = Appointment::create([
             'user_id' => auth()->id(),
@@ -122,7 +129,7 @@ class AppointmentController extends Controller
 
         if ($appointment->patient && $appointment->patient->correo) {
             try {
-                \Mail::send('emails.appointment-confirmation', [
+                Mail::send('emails.appointment-confirmation', [
                     'appointment' => $appointment,
                     'confirmationLink' => route('appointment.confirm', $appointment->confirmation_token),
                     'cancelLink' => URL::signedRoute('appointment.cancel-public', ['appointment' => $appointment->id]),
@@ -148,9 +155,21 @@ class AppointmentController extends Controller
             'end_date' => 'nullable|date|after:appointment_date',
         ]);
 
+        $start = $this->parseLocal($request->appointment_date);
+        $end = $request->end_date
+            ? $this->parseLocal($request->end_date)
+            : $start->copy()->addMinutes($appointment->duration_minutes ?? 30);
+
+        // Solo se valida "pasado" si realmente cambió la fecha de inicio
+        if (! $start->equalTo($appointment->appointment_date)) {
+            $this->assertNotPast($start);
+        }
+        $this->assertSlotFree($start, $end, $appointment->id);
+
         $appointment->update([
-            'appointment_date' => $request->appointment_date,
-            'end_date' => $request->end_date,
+            'appointment_date' => $start,
+            'end_date' => $end,
+            'duration_minutes' => max(5, (int) $start->diffInMinutes($end)),
         ]);
 
         return response()->json(['ok' => true, 'event' => $this->toEvent($appointment->fresh(['patient']))]);
@@ -171,8 +190,17 @@ class AppointmentController extends Controller
         ]);
 
         $duration = $request->duration_minutes ?? $appointment->duration_minutes ?? 30;
-        $start = Carbon::parse($request->appointment_date);
-        $end = $request->end_date ? Carbon::parse($request->end_date) : $start->copy()->addMinutes($duration);
+        $start = $this->parseLocal($request->appointment_date);
+        $end = $request->end_date
+            ? $this->parseLocal($request->end_date)
+            : $start->copy()->addMinutes($duration);
+
+        // Solo se valida "pasado" si cambió la fecha; así sigues pudiendo
+        // editar notas o marcar como "Finalizada" una cita que ya ocurrió.
+        if (! $start->equalTo($appointment->appointment_date)) {
+            $this->assertNotPast($start);
+        }
+        $this->assertSlotFree($start, $end, $appointment->id);
 
         $data = [
             'duration_minutes' => $duration,
@@ -283,7 +311,7 @@ class AppointmentController extends Controller
         $patient         = Patient::findOrFail($request->patient_id);
 
         if (!$this->isTimeAvailable($appointmentDate, $duration)) {
-            return back()->withErrors(['appointment_date' => 'Este horario no está disponible, elige otro'])
+            return back()->withErrors(['appointment_date' => 'Este horario ya está ocupado por otra cita, elige otro'])
                          ->withInput();
         }
 
@@ -300,7 +328,7 @@ class AppointmentController extends Controller
 
         if ($patient->correo) {
             try {
-                \Mail::send('emails.appointment-confirmation', [
+                Mail::send('emails.appointment-confirmation', [
                     'appointment'      => $appointment,
                     'confirmationLink' => route('appointment.confirm', $appointment->confirmation_token),
                     'cancelLink'       => URL::signedRoute('appointment.cancel-public', ['appointment' => $appointment->id]),
@@ -371,7 +399,7 @@ class AppointmentController extends Controller
         $appointmentDate = Carbon::createFromFormat('Y-m-d\TH:i', $request->appointment_date);
 
         if (!$this->isTimeAvailable($appointmentDate, $duration, $id)) {
-            return back()->withErrors(['appointment_date' => 'Este horario no está disponible, elige otro'])
+            return back()->withErrors(['appointment_date' => 'Este horario ya está ocupado por otra cita, elige otro'])
                          ->withInput();
         }
 
@@ -487,7 +515,7 @@ class AppointmentController extends Controller
         $end     = Carbon::parse($date->format('Y-m-d') . ' ' . $schedule->end_time);
 
         while ($current->copy()->addMinutes($duration)->lte($end)) {
-            if ($this->isTimeAvailable($current, $duration)) {
+            if ($current->gte(now()) && $this->isTimeAvailable($current, $duration)) {
                 $slots[] = [
                     'time'    => $current->format('H:i'),
                     'display' => $current->format('H:i'),
@@ -499,23 +527,55 @@ class AppointmentController extends Controller
         return response()->json(['slots' => $slots]);
     }
 
+    // ══════════════════════════════════════════════════════════
+    // Helpers de validación de horarios
+    // ══════════════════════════════════════════════════════════
+
+    /**
+     * Convierte cualquier fecha (incluido ISO con "Z" del calendario)
+     * a la zona horaria de la app.
+     */
+    private function parseLocal($value): Carbon
+    {
+        return Carbon::parse($value)->setTimezone(config('app.timezone'));
+    }
+
+    /**
+     * ¿La cita [start, end) se traslapa con otra cita activa?
+     * Citas pegadas (una termina 10:00 y otra empieza 10:00) SÍ se permiten.
+     */
+    private function hasConflict(Carbon $start, Carbon $end, ?int $excludeId = null): bool
+    {
+        $candidates = Appointment::whereNotIn('status', ['cancelada', 'no_asistio'])
+            ->where('appointment_date', '<', $end)
+            ->where('appointment_date', '>', $start->copy()->subDay())
+            ->when($excludeId, fn ($q) => $q->where('id', '!=', $excludeId))
+            ->get();
+
+        return $candidates->contains(fn ($a) => $a->finCalculado()->gt($start));
+    }
+
+    /** Compatibilidad con store(), update() y getAvailableSlots(). */
     private function isTimeAvailable($dateTime, $duration, $excludeId = null)
     {
-        $endTime = $dateTime->copy()->addMinutes($duration);
+        return ! $this->hasConflict($dateTime, $dateTime->copy()->addMinutes($duration), $excludeId);
+    }
 
-        $query = Appointment::where('status', '!=', 'cancelada')
-                            ->where(function ($q) use ($dateTime, $endTime) {
-                                $q->whereBetween('appointment_date', [$dateTime, $endTime])
-                                  ->orWhere(function ($q2) use ($dateTime, $endTime) {
-                                      $q2->where('appointment_date', '<=', $dateTime)
-                                         ->where('appointment_date', '>=', $endTime->copy()->subMinutes(60));
-                                  });
-                            });
-
-        if ($excludeId) {
-            $query->where('id', '!=', $excludeId);
+    private function assertNotPast(Carbon $start): void
+    {
+        if ($start->lt(now()->startOfMinute())) {
+            throw ValidationException::withMessages([
+                'appointment_date' => 'No puedes agendar una cita en una fecha u hora que ya pasó.',
+            ]);
         }
+    }
 
-        return $query->count() === 0;
+    private function assertSlotFree(Carbon $start, Carbon $end, ?int $excludeId = null): void
+    {
+        if ($this->hasConflict($start, $end, $excludeId)) {
+            throw ValidationException::withMessages([
+                'appointment_date' => 'Ese horario ya está ocupado por otra cita. Elige otro.',
+            ]);
+        }
     }
 }

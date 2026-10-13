@@ -21,47 +21,6 @@ class PrescriptionController extends Controller
         return view('prescriptions.create', compact('patient', 'prefillFecha', 'prefillAlergias', 'prefillItems', 'catalog'));
     }
 
-    public function duplicate(Prescription $prescription)
-    {
-        $prescription->load('items.medication', 'patient');
-
-        $patient = $prescription->patient;
-        $prefillFecha = now()->toDateString();
-        $prefillAlergias = $prescription->alergias;
-
-        // Al duplicar, si el medicamento sigue existiendo en el catálogo tomamos
-        // su información MÁS RECIENTE (por si la dosis/indicaciones cambiaron).
-        // Si el medicamento ya no existe en el catálogo, conservamos lo que
-        // quedó guardado en la receta original (histórico).
-        $prefillItems = $prescription->items->map(function ($item) {
-            if ($item->medication_id && $item->medication) {
-                $med = $item->medication;
-
-                return [
-                    'medication_id'    => $med->id,
-                    'nombre_comercial' => $med->nombre,
-                    'principio_activo' => $med->principio_activo,
-                    'presentacion'     => $med->presentacion,
-                    'indicaciones'     => $med->indicaciones,
-                    'observaciones'    => $item->observaciones,
-                ];
-            }
-
-            return [
-                'medication_id'    => null,
-                'nombre_comercial' => $item->nombre_comercial,
-                'principio_activo' => $item->principio_activo,
-                'presentacion'     => $item->presentacion,
-                'indicaciones'     => $item->indicaciones,
-                'observaciones'    => $item->observaciones,
-            ];
-        })->toArray();
-
-        $catalog = $this->catalogForPicker();
-
-        return view('prescriptions.create', compact('patient', 'prefillFecha', 'prefillAlergias', 'prefillItems', 'catalog'));
-    }
-
     public function store(Request $request, Patient $patient)
     {
         $request->validate([

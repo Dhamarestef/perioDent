@@ -16,7 +16,6 @@
         .btn-print { background-color: #667eea; color: white; }
         .btn-pdf { background-color: #28a745; color: white; }
         .btn-edit { background-color: #17a2b8; color: white; }
-        .btn-dup { background-color: #6c757d; color: white; }
         .btn-del { background-color: #dc3545; color: white; }
 
         .doc { background: white; border-radius: 10px; padding: 40px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
@@ -73,7 +72,6 @@
             <button type="button" class="btn btn-print" onclick="window.print()">🖨 Imprimir</button>
             <a href="{{ route('budgets.pdf', $budget->id) }}" class="btn btn-pdf">⬇ Descargar PDF</a>
             <a href="{{ route('budgets.edit', $budget->id) }}" class="btn btn-edit">✏️ Editar</a>
-            <a href="{{ route('budgets.duplicate', $budget->id) }}" class="btn btn-dup">📋 Duplicar</a>
             <form action="{{ route('budgets.destroy', $budget->id) }}" method="POST"
                   onsubmit="return confirm('¿Eliminar este presupuesto?')">
                 @csrf

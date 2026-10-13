@@ -15,7 +15,6 @@
         .btn { padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
         .btn-print { background-color: #667eea; color: white; }
         .btn-pdf { background-color: #28a745; color: white; }
-        .btn-dup { background-color: #17a2b8; color: white; }
         .btn-del { background-color: #dc3545; color: white; }
 
         .receta { background: white; border-radius: 10px; padding: 50px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
@@ -56,7 +55,6 @@
         <div class="toolbar">
             <button type="button" class="btn btn-print" onclick="window.print()">🖨 Imprimir</button>
             <a href="{{ route('prescriptions.pdf', $prescription->id) }}" class="btn btn-pdf">⬇ Descargar PDF</a>
-            <a href="{{ route('prescriptions.duplicate', $prescription->id) }}" class="btn btn-dup">📋 Duplicar</a>
             <form action="{{ route('prescriptions.destroy', $prescription->id) }}" method="POST"
                   onsubmit="return confirm('¿Eliminar esta receta?')">
                 @csrf
