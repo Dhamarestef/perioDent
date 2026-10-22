@@ -6,6 +6,7 @@ use App\Models\Budget;
 use App\Models\BudgetItem;
 use App\Models\Patient;
 use App\Models\Treatment;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -35,12 +36,18 @@ class BudgetController extends Controller
 
         $this->syncItems($budget, $request->items);
 
+        ActivityLog::record(auth()->user(), 'budgets.store', null, 'Budget', $budget->id);
+
         return redirect()->route('budgets.show', $budget->id)
                          ->with('success', 'Presupuesto generado correctamente');
     }
 
     public function show(Budget $budget)
     {
+        if (! $this->canManageRecord($budget)) {
+            abort(403);
+        }
+
         $budget->load(['patient', 'user', 'items']);
 
         return view('budgets.show', compact('budget'));
@@ -48,6 +55,10 @@ class BudgetController extends Controller
 
     public function edit(Budget $budget)
     {
+        if (! $this->canManageRecord($budget)) {
+            abort(403);
+        }
+
         $budget->load('items.treatment', 'patient');
         $patient = $budget->patient;
 
@@ -65,6 +76,10 @@ class BudgetController extends Controller
 
     public function update(Request $request, Budget $budget)
     {
+        if (! $this->canManageRecord($budget)) {
+            abort(403);
+        }
+
         $validated = $this->validateRequest($request);
 
         $budget->update([
@@ -77,13 +92,21 @@ class BudgetController extends Controller
         $budget->items()->delete();
         $this->syncItems($budget, $request->items);
 
+        ActivityLog::record(auth()->user(), 'budgets.update', null, 'Budget', $budget->id);
+
         return redirect()->route('budgets.show', $budget->id)
                          ->with('success', 'Presupuesto actualizado correctamente');
     }
 
     public function pdf(Budget $budget)
     {
+        if (! $this->canManageRecord($budget)) {
+            abort(403);
+        }
+
         $budget->load(['patient', 'user', 'items']);
+
+        ActivityLog::record(auth()->user(), 'budgets.pdf', null, 'Budget', $budget->id);
 
         $pdf = Pdf::loadView('budgets.pdf', compact('budget'))
                   ->setPaper('letter');
@@ -93,8 +116,14 @@ class BudgetController extends Controller
 
     public function destroy(Budget $budget)
     {
+        if (! $this->canManageRecord($budget)) {
+            abort(403);
+        }
+
         $patient = $budget->patient;
         $budget->delete();
+
+        ActivityLog::record(auth()->user(), 'budgets.destroy', null, 'Budget', $budget->id);
 
         return redirect()->route('patients.show', $patient->id)
                          ->with('success', 'Presupuesto ocultado correctamente');
@@ -108,8 +137,6 @@ class BudgetController extends Controller
             'descuento_porcentaje' => 'nullable|numeric|min:0|max:100',
             'promocion_bienvenida' => 'nullable|string|max:1000',
             'items' => 'required|array|min:1',
-            // withoutTrashed no se aplica: un presupuesto existente puede conservar
-            // un tratamiento que luego fue ocultado.
             'items.*.treatment_id' => 'required|integer|exists:treatments,id',
             'items.*.cantidad' => 'required|integer|min:1',
         ], [
@@ -123,21 +150,11 @@ class BudgetController extends Controller
         ]);
     }
 
-    /** Vacío o null => sin descuento. */
     private function normalizarDescuento($valor): ?float
     {
         return ($valor === null || $valor === '') ? null : (float) $valor;
     }
 
-    /**
-     * Nunca confiamos en "concepto" o precio que venga del formulario, solo
-     * en el treatment_id. El nombre y precio reales se copian desde el
-     * catálogo de Tratamientos (Eloquent), para que el presupuesto quede
-     * como un histórico fiel a la base de datos en el momento de emitirse.
-     *
-     * withTrashed(): si un tratamiento fue ocultado después de crear el
-     * presupuesto, el renglón no debe perderse al editarlo.
-     */
     private function syncItems(Budget $budget, array $items): void
     {
         $treatments = Treatment::withTrashed()

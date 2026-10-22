@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use App\Models\ActivityLog;
 
 class AuthController extends Controller
 {
@@ -14,6 +15,7 @@ class AuthController extends Controller
      */
     public function showRegister()
     {
+        abort_if(User::exists(), 404); // solo para crear al primer doctor
         return view('auth.register');
     }
 
@@ -22,6 +24,7 @@ class AuthController extends Controller
      */
     public function register(Request $request)
     {
+        abort_if(User::exists(), 404);
         // Validar datos
         $request->validate([
             'name' => 'required|string|max:255',
@@ -62,25 +65,30 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        // Validar datos
         $request->validate([
             'email' => 'required|string|email',
             'password' => 'required|string',
         ]);
 
-        // Intentar autenticar
+        $existing = User::where('email', $request->email)->first();
+        if ($existing && ! $existing->is_active && Hash::check($request->password, $existing->password)) {
+            return back()->withErrors(['email' => 'Tu cuenta está desactivada. Contacta al doctor.'])->onlyInput('email');
+        }
+
         if (Auth::attempt([
             'email' => $request->email,
             'password' => $request->password,
-        ], $request->remember)) {
-            // Si "Recuérdame" está marcado
+            'is_active' => true,
+        ], $request->boolean('remember'))) {
+            $request->session()->regenerate();
+            ActivityLog::record(Auth::user()->isReceptionist() ? Auth::user() : null, 'login');
+
             return redirect()->intended(route('dashboard'));
         }
 
-        // Si falla la autenticación
         return back()->withErrors([
             'email' => 'Las credenciales no coinciden con nuestros registros.',
-        ]);
+        ])->onlyInput('email');
     }
 
     /**
@@ -88,6 +96,9 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
+        if (Auth::user()?->isReceptionist()) {
+            ActivityLog::record(Auth::user(), 'logout');
+        }
         Auth::logout();
         $request->session()->invalidate();
         $request->session()->regenerateToken();

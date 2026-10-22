@@ -73,4 +73,9 @@ class Budget extends Model
     {
         return Str::upper($this->fecha->translatedFormat('d \d\e F \d\e Y'));
     }
+    /** Quien firma el documento: el doctor, aunque lo haya creado la recepción. */
+    public function firmante(): ?User
+    {
+        return ($this->user && $this->user->isDoctor()) ? $this->user : User::firmante();
+    }
 }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Appointment;
 use App\Models\Patient;
+use App\Models\ActivityLog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -52,7 +53,7 @@ class PatientController extends Controller
             'correo.email'              => 'Ingresa un correo electrónico válido',
         ]);
 
-        Patient::create([
+        $patient = Patient::create([
             'numero_expediente' => Patient::generarNumeroExpediente(),
             'fecha_registro'    => $request->fecha_registro,
             'nombre'            => $request->nombre,
@@ -69,14 +70,15 @@ class PatientController extends Controller
             'alergias'          => $request->alergias,
         ]);
 
+        ActivityLog::record(auth()->user(), 'patients.store', null, 'Patient', $patient->id);
+
         return redirect()->route('patients.index')
                          ->with('success', 'Paciente registrado correctamente');
     }
 
     public function show($id)
     {
-        $patient = Patient::with(['appointments'])
-                        ->findOrFail($id);
+        $patient = Patient::with(['appointments'])->findOrFail($id);
 
         $prescriptions = $patient->prescriptions()
                                 ->orderBy('fecha_emision', 'desc')
@@ -128,14 +130,12 @@ class PatientController extends Controller
 
         $patient->update($request->except('numero_expediente'));
 
+        ActivityLog::record(auth()->user(), 'patients.update', null, 'Patient', $patient->id);
+
         return redirect()->route('patients.show', $patient->id)
                          ->with('success', 'Paciente actualizado correctamente');
     }
 
-    /**
-     * Oculta al paciente (soft delete) y elimina sus citas futuras.
-     * Las citas pasadas se conservan como historial.
-     */
     public function destroy($id)
     {
         $patient = Patient::findOrFail($id);
@@ -149,6 +149,8 @@ class PatientController extends Controller
 
             $patient->delete();
         });
+
+        ActivityLog::record(auth()->user(), 'patients.destroy', null, 'Patient', $patient->id);
 
         $mensaje = 'Paciente ocultado correctamente';
         if ($citasEliminadas > 0) {
@@ -167,13 +169,20 @@ class PatientController extends Controller
             return response()->json([]);
         }
 
+        $columns = ['id', 'nombre', 'numero_expediente', 'telefono', 'correo'];
+
+        // El doctor ve datos administrativos completos; la recepcionista solo
+        // lo mínimo para identificar y agendar.
+        if ($request->user()->isDoctor()) {
+            $columns = array_merge($columns, ['domicilio_actual', 'lugar_nacimiento', 'edad']);
+        }
+
         $patients = Patient::where('nombre', 'LIKE', "%{$query}%")
                            ->orWhere('numero_expediente', 'LIKE', "%{$query}%")
                            ->orWhere('telefono', 'LIKE', "%{$query}%")
                            ->orderBy('nombre')
                            ->limit(8)
-                           ->get(['id', 'nombre', 'numero_expediente', 'telefono', 'correo',
-                                  'domicilio_actual', 'lugar_nacimiento', 'edad']);
+                           ->get($columns);
 
         return response()->json($patients);
     }
@@ -204,6 +213,8 @@ class PatientController extends Controller
             'domicilio_actual'  => 'Por completar',
             'lugar_residencia'  => 'Por completar',
         ]);
+
+        ActivityLog::record(auth()->user(), 'patients.quick-store', null, 'Patient', $patient->id);
 
         return response()->json([
             'id'                => $patient->id,

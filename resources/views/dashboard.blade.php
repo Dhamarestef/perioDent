@@ -39,10 +39,11 @@
     </style>
 </head>
 <body>
+    @php($user = Auth::user())
     <div class="navbar">
         <h1>🦷 PerioDent</h1>
         <div class="user-info">
-            <span>👤 {{ Auth::user()->name }}</span>
+            <span>👤 {{ $user->name }} @if($user->isDoctor()) · Doctor @else · Recepción @endif</span>
             <form action="{{ route('logout') }}" method="POST" style="display:inline;">
                 @csrf
                 <button type="submit" class="logout-btn">Cerrar sesión</button>
@@ -57,12 +58,13 @@
         @endif
 
         <div class="welcome-card">
-            <h2>Bienvenido, {{ Auth::user()->name }} 👋</h2>
+            <h2>Bienvenido, {{ $user->name }} 👋</h2>
             <p>Panel de control de PerioDent. Selecciona un módulo para comenzar.</p>
         </div>
 
-        <div class="section-title">Módulos principales</div>
+        <div class="section-title">Módulos disponibles</div>
         <div class="cards-grid">
+            @can('patients.view')
             <a href="{{ route('patients.index') }}" class="card-link">
                 <div class="card">
                     <div class="card-icon">👥</div>
@@ -70,7 +72,9 @@
                     <p>Gestionar expedientes de pacientes</p>
                 </div>
             </a>
+            @endcan
 
+            @can('appointments.view')
             <a href="{{ route('appointment.index') }}" class="card-link">
                 <div class="card">
                     <div class="card-icon">📅</div>
@@ -78,7 +82,19 @@
                     <p>Agendar y gestionar citas</p>
                 </div>
             </a>
+            @endcan
 
+            @can('budgets.create')
+            <a href="{{ route('patients.index') }}" class="card-link">
+                <div class="card">
+                    <div class="card-icon">🧾</div>
+                    <h3>Presupuestos</h3>
+                    <p>Crear y consultar presupuestos</p>
+                </div>
+            </a>
+            @endcan
+
+            @can('treatments.manage')
             <a href="{{ route('treatments.index') }}" class="card-link">
                 <div class="card">
                     <div class="card-icon">🦷</div>
@@ -86,7 +102,9 @@
                     <p>Catálogo de tratamientos y costos</p>
                 </div>
             </a>
+            @endcan
 
+            @can('medications.manage')
             <a href="{{ route('medications.index') }}" class="card-link">
                 <div class="card">
                     <div class="card-icon">💊</div>
@@ -94,14 +112,27 @@
                     <p>Catálogo de medicamentos e indicaciones</p>
                 </div>
             </a>
+            @endcan
 
+            @can('doctor')
+            <a href="{{ route('users.index') }}" class="card-link">
+                <div class="card">
+                    <div class="card-icon">🔑</div>
+                    <h3>Recepcionistas</h3>
+                    <p>Administrar cuentas y permisos</p>
+                </div>
+            </a>
+            @endcan
+
+            @can('doctor')
             <a href="{{ route('papelera.index') }}" class="card-link">
                 <div class="card">
                     <div class="card-icon">🗑️</div>
                     <h3>Papelera</h3>
-                    <p>Pacientes, presupuestos, recetas, tratamientos y medicamentos ocultados</p>
+                    <p>Restaurar o eliminar definitivamente</p>
                 </div>
             </a>
+            @endcan
 
             <a href="{{ route('profile.edit') }}" class="card-link">
                 <div class="card">

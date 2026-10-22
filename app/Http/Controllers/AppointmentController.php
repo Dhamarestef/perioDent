@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Appointment;
 use App\Models\Patient;
 use App\Models\Schedule;
+use App\Models\ActivityLog;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -31,10 +32,15 @@ class AppointmentController extends Controller
 
     /**
      * Alimenta el calendario (FullCalendar) con las citas en formato evento.
+     * El doctor ve todas; la recepcionista solo las que ella creó.
      */
     public function events(Request $request)
     {
         $query = Appointment::with(['patient']);
+
+        if (! $request->user()->isDoctor()) {
+            $query->where('user_id', $request->user()->id);
+        }
 
         if ($request->filled('start')) {
             $query->where('appointment_date', '>=', $request->start);
@@ -49,7 +55,8 @@ class AppointmentController extends Controller
     }
 
     /**
-     * Buscador rápido de citas por nombre, expediente o teléfono (barra superior del calendario).
+     * Buscador rápido de citas por nombre, expediente o teléfono.
+     * El doctor ve todas; la recepcionista solo las que ella creó.
      */
     public function searchAppointments(Request $request)
     {
@@ -60,6 +67,7 @@ class AppointmentController extends Controller
         }
 
         $appointments = Appointment::with(['patient'])
+            ->when(! $request->user()->isDoctor(), fn ($query) => $query->where('user_id', $request->user()->id))
             ->where(function ($query) use ($q) {
                 $query->where('nombre_temporal', 'LIKE', "%{$q}%")
                     ->orWhere('telefono_temporal', 'LIKE', "%{$q}%")
@@ -125,6 +133,8 @@ class AppointmentController extends Controller
             'confirmation_token' => Str::random(32),
         ]);
 
+        ActivityLog::record(auth()->user(), 'appointment.quick-store', null, 'Appointment', $appointment->id);
+
         $appointment->load('patient');
 
         if ($appointment->patient && $appointment->patient->correo) {
@@ -150,6 +160,10 @@ class AppointmentController extends Controller
      */
     public function updateDates(Request $request, Appointment $appointment)
     {
+        if (! $this->canManageRecord($appointment)) {
+            abort(403);
+        }
+
         $request->validate([
             'appointment_date' => 'required|date',
             'end_date' => 'nullable|date|after:appointment_date',
@@ -160,7 +174,6 @@ class AppointmentController extends Controller
             ? $this->parseLocal($request->end_date)
             : $start->copy()->addMinutes((int) ($appointment->duration_minutes ?? 30));
 
-        // Solo se valida "pasado" si realmente cambió la fecha de inicio
         if (! $start->equalTo($appointment->appointment_date)) {
             $this->assertNotPast($start);
         }
@@ -180,6 +193,10 @@ class AppointmentController extends Controller
      */
     public function updateDetails(Request $request, Appointment $appointment)
     {
+        if (! $this->canManageRecord($appointment)) {
+            abort(403);
+        }
+
         $request->validate([
             'duration_minutes' => 'nullable|integer|min:5',
             'appointment_date' => 'required|date',
@@ -195,8 +212,6 @@ class AppointmentController extends Controller
             ? $this->parseLocal($request->end_date)
             : $start->copy()->addMinutes($duration);
 
-        // Solo se valida "pasado" si cambió la fecha; así sigues pudiendo
-        // editar notas o marcar como "Finalizada" una cita que ya ocurrió.
         if (! $start->equalTo($appointment->appointment_date)) {
             $this->assertNotPast($start);
         }
@@ -220,13 +235,26 @@ class AppointmentController extends Controller
     }
 
     /**
-     * Cambiar el estado de la cita (Programada/Confirmada/En consulta/Finalizada/Cancelada/No asistió).
+     * Cambiar el estado de la cita.
      */
     public function updateStatus(Request $request, Appointment $appointment)
     {
+        if (! $this->canManageRecord($appointment)) {
+            abort(403);
+        }
+
         $request->validate([
             'status' => 'required|in:' . implode(',', array_keys(Appointment::$estados)),
         ]);
+
+        $user = $request->user();
+
+        // Cancelar requiere appointments.cancel; el resto requiere appointments.edit.
+        if ($request->status === 'cancelada') {
+            abort_unless($user->hasPermission('appointments.cancel'), 403);
+        } else {
+            abort_unless($user->hasPermission('appointments.edit'), 403);
+        }
 
         $data = ['status' => $request->status];
         if ($request->status === 'confirmada' && ! $appointment->confirmed_at) {
@@ -243,6 +271,12 @@ class AppointmentController extends Controller
      */
     public function destroy(Appointment $appointment)
     {
+        if (! $this->canManageRecord($appointment)) {
+            abort(403);
+        }
+
+        ActivityLog::record(auth()->user(), 'appointment.destroy', null, 'Appointment', $appointment->id);
+
         $appointment->delete();
 
         return response()->json(['ok' => true]);
@@ -276,8 +310,7 @@ class AppointmentController extends Controller
     }
 
     // ══════════════════════════════════════════════════════════
-    // Métodos anteriores — formulario simple /appointments/create,
-    // confirmación por email, etc.
+    // Formulario simple /appointments/create y confirmación email
     // ══════════════════════════════════════════════════════════
 
     public function create()
@@ -326,6 +359,8 @@ class AppointmentController extends Controller
             'status'             => 'programada',
         ]);
 
+        ActivityLog::record(auth()->user(), 'appointment.store', null, 'Appointment', $appointment->id);
+
         if ($patient->correo) {
             try {
                 Mail::send('emails.appointment-confirmation', [
@@ -347,10 +382,9 @@ class AppointmentController extends Controller
 
     public function show($id)
     {
-        $appointment = Appointment::with(['patient', 'user'])
-                                  ->findOrFail($id);
+        $appointment = Appointment::with(['patient', 'user'])->findOrFail($id);
 
-        if ($appointment->user_id !== auth()->id()) {
+        if (! $this->canManageRecord($appointment)) {
             abort(403);
         }
 
@@ -361,7 +395,7 @@ class AppointmentController extends Controller
     {
         $appointment = Appointment::with(['patient'])->findOrFail($id);
 
-        if ($appointment->user_id !== auth()->id()) {
+        if (! $this->canManageRecord($appointment)) {
             abort(403);
         }
 
@@ -376,7 +410,7 @@ class AppointmentController extends Controller
     {
         $appointment = Appointment::findOrFail($id);
 
-        if ($appointment->user_id !== auth()->id()) {
+        if (! $this->canManageRecord($appointment)) {
             abort(403);
         }
 
@@ -418,7 +452,7 @@ class AppointmentController extends Controller
     {
         $appointment = Appointment::findOrFail($id);
 
-        if ($appointment->user_id !== auth()->id()) {
+        if (! $this->canManageRecord($appointment)) {
             abort(403);
         }
 
@@ -432,10 +466,7 @@ class AppointmentController extends Controller
     }
 
     /**
-     * Cancelación pública desde el enlace del correo (confirmación o recordatorio).
-     * Usa un enlace firmado (signed route) en vez del confirmation_token, porque
-     * ese token se anula al confirmar la cita y el botón de cancelar debe seguir
-     * funcionando incluso después de que el paciente ya confirmó.
+     * Cancelación pública desde el enlace del correo.
      */
     public function cancelPublic(Appointment $appointment)
     {
@@ -531,19 +562,11 @@ class AppointmentController extends Controller
     // Helpers de validación de horarios
     // ══════════════════════════════════════════════════════════
 
-    /**
-     * Convierte cualquier fecha (incluido ISO con "Z" del calendario)
-     * a la zona horaria de la app.
-     */
     private function parseLocal($value): Carbon
     {
         return Carbon::parse($value)->setTimezone(config('app.timezone'));
     }
 
-    /**
-     * ¿La cita [start, end) se traslapa con otra cita activa?
-     * Citas pegadas (una termina 10:00 y otra empieza 10:00) SÍ se permiten.
-     */
     private function hasConflict(Carbon $start, Carbon $end, ?int $excludeId = null): bool
     {
         $candidates = Appointment::whereNotIn('status', ['cancelada', 'no_asistio'])
@@ -555,7 +578,6 @@ class AppointmentController extends Controller
         return $candidates->contains(fn ($a) => $a->finCalculado()->gt($start));
     }
 
-    /** Compatibilidad con store(), update() y getAvailableSlots(). */
     private function isTimeAvailable($dateTime, $duration, $excludeId = null)
     {
         return ! $this->hasConflict($dateTime, $dateTime->copy()->addMinutes((int) $duration), $excludeId ? (int) $excludeId : null);
